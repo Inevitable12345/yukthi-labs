@@ -1,0 +1,232 @@
+import { causalGraphSchema, type CausalGraph } from "./schema";
+
+/* ============================================================================
+   SYSTEMS CONVERGENCE
+   ----------------------------------------------------------------------------
+   Structure: illustrative as a whole; individual stages are evidenced.
+
+   The point of this graph is that the forces usually listed as separate risk
+   categories are one connected system. The chain below is drawn as a single
+   worked path through that system — not as a prediction that it will run.
+   ========================================================================== */
+
+export const convergenceForces = [
+  {
+    id: "geopolitical",
+    label: "Geopolitical fragmentation",
+    evidenceIds: ["E-001", "E-003", "E-017"],
+  },
+  { id: "ai-race", label: "AI infrastructure race", evidenceIds: ["E-015"] },
+  { id: "energy-transition", label: "Energy transition", evidenceIds: ["E-005"] },
+  { id: "electricity", label: "Electricity demand growth", evidenceIds: ["E-015"] },
+  { id: "minerals", label: "Critical-mineral concentration", evidenceIds: ["E-005", "E-006"] },
+  { id: "climate", label: "Climate-driven physical risk", evidenceIds: ["E-011"] },
+  { id: "weaponization", label: "Supply-chain weaponisation", evidenceIds: ["E-004", "E-016"] },
+  { id: "tech-change", label: "Rapid technological change", evidenceIds: ["E-012", "E-013"] },
+] as const;
+
+export const convergenceChain: CausalGraph = causalGraphSchema.parse({
+  id: "convergence-chain",
+  title: "One path through the coupled system",
+  scope:
+    "How compute demand reaches a critical-mineral chokepoint and returns as a compute constraint",
+  illustrative: true,
+  evidenceIds: ["E-004", "E-005", "E-006", "E-015", "E-016"],
+  textAlternative:
+    "A vertical chain of eleven stages showing that risks usually filed under separate headings are one connected loop. An AI build-out drives data-centre construction. Data-centre construction drives electricity demand — the IEA estimates data centre consumption at about 415 terawatt hours in 2024, roughly 1.5 percent of global electricity, projected to reach about 945 terawatt hours by 2030. Electricity demand drives demand for transformers and grid equipment. Transformers and grid equipment drive demand for copper and critical materials. Those materials pass through concentrated processing capacity — the IEA reports roughly 90 percent of rare-earth refining in a single jurisdiction. Concentrated processing carries export-control risk, realised in the April 2025 licensing regime. Export-control risk raises infrastructure cost and lead time. Higher cost and longer lead times delay data centres. Delayed data centres constrain available compute. Constrained compute becomes an input to strategic competition, which drives the build-out the chain began with. The chain is illustrative: each stage is evidenced, but their combination into this particular path is an explanatory construction, not an observed sequence.",
+  nodes: [
+    {
+      id: "cv-ai",
+      label: "AI build-out",
+      kind: "market",
+      position: { x: 0.5, y: 0.02 },
+      illustrative: true,
+    },
+    {
+      id: "cv-dc",
+      label: "Data-centre construction",
+      kind: "infrastructure",
+      position: { x: 0.5, y: 0.12 },
+      illustrative: true,
+    },
+    {
+      id: "cv-power",
+      label: "Electricity demand",
+      kind: "state",
+      position: { x: 0.5, y: 0.22 },
+      state: "~415 TWh in 2024 → ~945 TWh projected for 2030",
+      evidenceIds: ["E-015"],
+    },
+    {
+      id: "cv-transformer",
+      label: "Transformers · grid equipment",
+      kind: "asset",
+      position: { x: 0.5, y: 0.32 },
+      illustrative: true,
+    },
+    {
+      id: "cv-copper",
+      label: "Copper · critical materials",
+      kind: "asset",
+      position: { x: 0.5, y: 0.42 },
+      illustrative: true,
+    },
+    {
+      id: "cv-processing",
+      label: "Processing concentration",
+      kind: "geography",
+      position: { x: 0.5, y: 0.52 },
+      state: "~90% of rare-earth refining in one jurisdiction",
+      evidenceIds: ["E-005"],
+    },
+    {
+      id: "cv-control",
+      label: "Export-control risk",
+      kind: "policy",
+      position: { x: 0.5, y: 0.62 },
+      state: "Realised April 2025",
+      evidenceIds: ["E-004", "E-016"],
+    },
+    {
+      id: "cv-cost",
+      label: "Infrastructure cost + lead time",
+      kind: "state",
+      position: { x: 0.5, y: 0.72 },
+      illustrative: true,
+    },
+    {
+      id: "cv-delay",
+      label: "Delayed data centres",
+      kind: "outcome",
+      position: { x: 0.5, y: 0.82 },
+      illustrative: true,
+    },
+    {
+      id: "cv-compute",
+      label: "Constrained compute",
+      kind: "state",
+      position: { x: 0.5, y: 0.91 },
+      illustrative: true,
+    },
+    {
+      id: "cv-competition",
+      label: "Strategic AI competition",
+      kind: "risk",
+      position: { x: 0.5, y: 0.99 },
+      illustrative: true,
+    },
+  ],
+  relations: [
+    {
+      id: "cv-1",
+      sourceIds: ["cv-ai"],
+      targetIds: ["cv-dc"],
+      label: "capital → build",
+      order: 1,
+      state: "active",
+      illustrative: true,
+      mechanism: "Model scale is realised as physical facilities.",
+    },
+    {
+      id: "cv-2",
+      sourceIds: ["cv-dc"],
+      targetIds: ["cv-power"],
+      label: "build → load",
+      order: 1,
+      state: "active",
+      evidenceIds: ["E-015"],
+      mechanism: "Compute capacity converts directly into sustained electrical load.",
+    },
+    {
+      id: "cv-3",
+      sourceIds: ["cv-power"],
+      targetIds: ["cv-transformer"],
+      label: "load → equipment",
+      order: 2,
+      state: "active",
+      illustrative: true,
+      mechanism: "New load requires connection, transformation and distribution hardware.",
+    },
+    {
+      id: "cv-4",
+      sourceIds: ["cv-transformer"],
+      targetIds: ["cv-copper"],
+      label: "equipment → materials",
+      order: 2,
+      state: "active",
+      illustrative: true,
+      mechanism: "Grid hardware is material-intensive in copper, steel and specialist alloys.",
+    },
+    {
+      id: "cv-5",
+      sourceIds: ["cv-copper"],
+      targetIds: ["cv-processing"],
+      label: "materials → processing",
+      order: 2,
+      state: "active",
+      evidenceIds: ["E-005"],
+      mechanism: "Material demand resolves to the small number of sites that can process it.",
+    },
+    {
+      id: "cv-6",
+      sourceIds: ["cv-processing"],
+      targetIds: ["cv-control"],
+      label: "concentration → leverage",
+      order: 3,
+      state: "active",
+      evidenceIds: ["E-016"],
+      mechanism: "Concentration is what makes a control action effective rather than symbolic.",
+    },
+    {
+      id: "cv-7",
+      sourceIds: ["cv-control"],
+      targetIds: ["cv-cost"],
+      label: "control → cost",
+      order: 3,
+      state: "active",
+      illustrative: true,
+      mechanism: "Licensing lengthens lead times before it changes prices.",
+    },
+    {
+      id: "cv-8",
+      sourceIds: ["cv-cost"],
+      targetIds: ["cv-delay"],
+      label: "cost → delay",
+      order: 3,
+      state: "active",
+      illustrative: true,
+      mechanism: "Connection equipment, not construction, becomes the schedule constraint.",
+    },
+    {
+      id: "cv-9",
+      sourceIds: ["cv-delay"],
+      targetIds: ["cv-compute"],
+      label: "delay → constraint",
+      order: 3,
+      state: "active",
+      illustrative: true,
+      mechanism: "Compute unavailable on schedule is capacity that does not exist.",
+    },
+    {
+      id: "cv-10",
+      sourceIds: ["cv-compute"],
+      targetIds: ["cv-competition"],
+      label: "constraint → competition",
+      order: 3,
+      state: "active",
+      illustrative: true,
+      mechanism: "Scarce compute becomes a strategic variable rather than a commercial one.",
+    },
+    {
+      id: "cv-11",
+      sourceIds: ["cv-competition"],
+      targetIds: ["cv-ai"],
+      label: "the return path",
+      order: 3,
+      state: "active",
+      illustrative: true,
+      mechanism:
+        "Competition drives the build-out that started the chain. The system acts on itself.",
+    },
+  ],
+});
