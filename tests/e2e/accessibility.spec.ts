@@ -131,7 +131,8 @@ test.describe("reduced motion", () => {
     await page.goto("/");
     await page.waitForTimeout(2000);
     expect(await page.locator("canvas").count()).toBe(0);
-    // The static field still renders, so the act is never empty.
-    await expect(page.locator("#invocation svg").first()).toBeAttached();
+    // The world layer still renders — as the static SVG world, which is what the
+    // reduced-motion rendering is. Nothing is blank and nothing is animated.
+    await expect(page.locator("svg").first()).toBeAttached();
   });
 });

@@ -22,6 +22,7 @@ Map → Monitor → Forecast → Simulate → Re-map
 
 - [Project overview](#project-overview)
 - [Architecture](#architecture)
+- [The world layer](#the-world-layer)
 - [Stack](#stack)
 - [Folder structure](#folder-structure)
 - [Installation](#installation)
@@ -35,6 +36,7 @@ Map → Monitor → Forecast → Simulate → Re-map
 - [How to add a research article](#how-to-add-a-research-article)
 - [How to add a field note](#how-to-add-a-field-note)
 - [How to add a causal scenario](#how-to-add-a-causal-scenario)
+- [How to change the world layer](#how-to-change-the-world-layer)
 - [How to replace demo data with real model output](#how-to-replace-demo-data-with-real-model-output)
 - [Security notes](#security-notes)
 - [Privacy and consent notes](#privacy-and-consent-notes)
@@ -64,21 +66,22 @@ Map → Monitor → Forecast → Simulate → Re-map
 
 ### The twelve acts
 
-| #   | Act                          | What it does                                                           |
-| --- | ---------------------------- | ---------------------------------------------------------------------- |
-| 01  | Invocation                   | The mission, a faint causal field, one way down                        |
-| 02  | The stable operating system  | Why extrapolation was once the correct method                          |
-| 03  | The rupture                  | Topology changes; the nodes barely move                                |
-| 04  | The evidence field           | The argument stops being assertion                                     |
-| 05  | Rare-earth cascade           | A concentrated upstream input beneath trillions of downstream activity |
-| 06  | The linear model fails       | Chain versus hypergraph, switched by the reader                        |
-| 07  | Structural break             | Why a well-built model fails on schedule when the regime moves         |
-| 08  | Feedback cascade             | Winter Storm Uri as a reinforcing loop                                 |
-| —   | Convergence _(interstitial)_ | The forces are one connected system                                    |
-| 09  | The 3 a.m. problem           | A decision frame, six scopes, three causal steps each                  |
-| 10  | The opening created by AI    | Five capabilities, each with its limit attached                        |
-| 11  | Yukthi's bet                 | The reveal, and the operating loop                                     |
-| 12  | Civilizational ambition      | A horizon, not a footer                                                |
+| #   | Act                               | What it does                                                           |
+| --- | --------------------------------- | ---------------------------------------------------------------------- |
+| 01  | Invocation                        | The mission, a faint causal field, one way down                        |
+| 02  | The stable operating system       | Why extrapolation was once the correct method                          |
+| 03  | The rupture                       | Topology changes; the nodes barely move                                |
+| 04  | The evidence field                | The argument stops being assertion                                     |
+| 05  | Rare-earth cascade                | A concentrated upstream input beneath trillions of downstream activity |
+| 06  | The linear model fails            | Chain versus hypergraph, switched by the reader                        |
+| 07  | Structural break                  | Why a well-built model fails on schedule when the regime moves         |
+| 08  | Feedback cascade                  | Winter Storm Uri as a reinforcing loop                                 |
+| —   | Convergence _(interstitial)_      | The forces are one connected system                                    |
+| 09  | The 3 a.m. problem                | A decision frame, six scopes, three causal steps each                  |
+| 10  | The opening created by AI         | Five capabilities, each with its limit attached                        |
+| 11  | Yukthi's bet                      | The reveal, and the operating loop                                     |
+| —   | Possible futures _(interstitial)_ | Four branches, their drivers and assumptions, and no probabilities     |
+| 12  | Civilizational ambition           | A horizon, not a footer                                                |
 
 ---
 
@@ -109,16 +112,113 @@ the build rather than rendering something misleading.
 
 ### Rendering strategy
 
-| Layer                | Technology                   | Why                                                                                                    |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Causal diagrams      | Server-rendered SVG          | Accessible, printable, readable with JavaScript disabled, and crisp at any zoom                        |
-| Interaction          | Client islands over that SVG | Nodes are focusable controls; the diagram itself is static markup                                      |
-| Ambient causal field | 2D SVG, upgraded to WebGL    | The static field renders on the server; React Three Fiber loads afterwards, only where it is warranted |
-| Layout and prose     | React Server Components      | No client JavaScript for anything that does not need it                                                |
+| Layer            | Technology                    | Why                                                                                                                                 |
+| ---------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Causal diagrams  | Server-rendered SVG           | Accessible, printable, readable with JavaScript disabled, and crisp at any zoom                                                     |
+| Interaction      | Client islands over that SVG  | Nodes are focusable controls; the diagram itself is static markup                                                                   |
+| The world layer  | Server SVG, upgraded to WebGL | The globe, its routes and the causal structure render on the server; React Three Fiber loads afterwards, only where it is warranted |
+| Layout and prose | React Server Components       | No client JavaScript for anything that does not need it                                                                             |
 
 The 3D scene is skipped entirely under `prefers-reduced-motion`, without WebGL,
 on a device reporting two cores or fewer, and when data-saver is on. The static
-field is not a fallback — it is the same picture, and it is what renders first.
+world is not a fallback — it is the same picture, drawn from the same
+coordinates, and it is what renders first.
+
+---
+
+## The world layer
+
+The homepage carries a second argument behind the first: one continuous world
+model, pinned to the sections in front of it, that begins as a globe and is
+progressively shown to be a causal structure.
+
+It is a **layer, not a gate**. Remove it — no WebGL, reduced motion, a slow
+connection, JavaScript disabled entirely — and the twelve acts are unchanged.
+Nothing it shows is information that is not also written down.
+
+### The thirteen scenes
+
+| #   | Scene            | Anchored to                | What the world is doing                                       |
+| --- | ---------------- | -------------------------- | ------------------------------------------------------------- |
+| 01  | Invocation       | `#invocation`              | A horizon and a few distant, unconnected points               |
+| 02  | Stability        | `#stable-world`            | Routes running on their expected paths, at a regular cadence  |
+| 03  | Rupture          | `#rupture`                 | The same endpoints rerouted, made conditional, or broken      |
+| 04  | Evidence         | `#evidence-field`          | Sourced records docking onto the nodes they are cited against |
+| 05  | Chokepoint       | `#rare-earth`              | One upstream constraint propagating to four sectors           |
+| 06  | Hypergraph intro | `#linear-failure`          | Nodes beginning to leave their map coordinates                |
+| 07  | Structural break | `#structural-break`        | The scene flattens into an analytic plane                     |
+| 08  | Feedback         | `#feedback` `#convergence` | A closed loop that tightens with each pass                    |
+| 09  | Decision scope   | `#three-am`                | The structure narrowed to the selected scope                  |
+| 10  | AI organisation  | `#ai-capability`           | Unresolved fragments resolving into structure                 |
+| 11  | World model      | `#the-bet`                 | The geographic shell drops; the operating loop runs once      |
+| 12  | Future space     | `#futures`                 | Four branches, widening, labelled illustrative                |
+| 13  | Horizon          | `#ambition`                | The structure recedes to a horizon line                       |
+
+### How it works
+
+`lib/world/state.ts` holds the whole visual system as **one pure function of one
+number**:
+
+```ts
+worldStateAt(t) -> { resolve, geoShell, rewire, evidence, chokepoint, morph,
+                     analytic, feedback, scope, organize, loop, futures, horizon, ... }
+```
+
+`t` is scroll position expressed as a continuous coordinate over the thirteen
+scenes: each scene owns the span of the sections pinned to it, and the reading
+line is the middle of the viewport, so a scene peaks while its section is being
+read. Every layer in the scene reads that one value and decides what it should
+look like at it.
+
+That is the entire reversibility strategy, and it is why the acceptance criterion
+"all transitions must reverse correctly" is a unit test rather than a hope.
+Scrolling up is not an exit animation that has to undo anything — it is the same
+function evaluated at a smaller number. There is no timeline to get out of step,
+no transition that can fire twice, and no stale state to reconcile.
+
+### Three renderings of the same world
+
+| Condition                             | What renders                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| First byte, and JavaScript disabled   | `WorldFallback` — server-rendered SVG at the current scene                                              |
+| `prefers-reduced-motion: reduce`      | `ReducedMotionWorld` — the same SVG, swapped without transition; **no WebGL context is created at all** |
+| No WebGL, data-saver, ≤2 cores, ≤2 GB | `WorldFallback`, permanently                                                                            |
+| Capable device, after first paint     | `WorldCanvas` — React Three Fiber, cross-faded in                                                       |
+
+The SVG and the WebGL rendering are drawn from the same coordinates, the same
+routes and the same structure — `lib/world/geo.ts` and `lib/world/layout.ts` are
+shared. The fallback is the picture, not a placeholder for it.
+
+### Data
+
+`data/world-model.ts` holds it all, under the same rules as the evidence library:
+
+- **`worldNodes`** — real places at their real coordinates, each with the role it
+  plays in one of the site's sourced cases, the evidence cited for it, and its
+  position in causal space once the geographic shell is dropped.
+- **`worldArcs`** — routes, and what each becomes after the structure changes:
+  `held`, `rerouted` (through a named waypoint), `conditional`, or `broken`.
+- **`causalOnlyNodes`** — states and mechanisms with no address. They are the
+  reason a map is insufficient, and they appear only once the structure does.
+- **`worldHyperedges`** — joint production, sources → junction → targets.
+- **`chokepointWave`** — the propagation order of the rare-earth cascade.
+- **`scopeMembership`** — what each decision scope in Act 09 is built around.
+- **`landOutlines`** — coarse continent outlines, sampled procedurally. There is
+  no texture, no image, and no downloaded asset anywhere in the layer.
+
+No quantity appears in this file that is not in the evidence library, and every
+node whose role is explanatory rather than observed is marked `illustrative`.
+
+### Interaction with the page
+
+The scope selector in Act 09 dispatches a `yukthi:scope` event; the world layer
+listens and re-lights the corresponding subset of the structure. The connection
+runs one way, so the selector behaves identically with the layer absent.
+
+The layer never captures a scroll, never traps focus, never receives a pointer
+event (`pointer-events: none`, `-z-10`), and is hidden from assistive technology
+— because the same sequence is published beside it as prose, one paragraph per
+scene, in the accessibility tree.
 
 ---
 
@@ -178,15 +278,17 @@ request reaches a font CDN while a reader is reading.
 │   ├── scenario/               the 3 a.m. decision frame
 │   ├── thesis/                 section, sticky index
 │   ├── ui/                     dialog, hairline, instrument label, action link
-│   └── visualization/          break chart, order trace, future fan, loop, causal field
+│   ├── visualization/          break chart, order trace, future fan, operating loop
+│   └── world-model/            the homepage world layer: canvas, scene layers, fallback
 │
 ├── content/
 │   ├── field-notes/            *.mdx + registry.ts
 │   └── research/               registry.ts (empty)
 │
-├── data/                       schema.ts + one file per causal graph
+├── data/                       schema.ts + one file per causal graph, + world-model.ts
 ├── lib/
 │   ├── analytics/ consent/ contact/ graph/ metadata/ security/ utils/
+│   └── world/                  geo, layout, palette, scene state, scroll binding
 ├── public/icons/
 ├── tests/
 │   ├── unit/ accessibility/ e2e/
@@ -513,6 +615,37 @@ label on the canvas; everything else is one click away in the inspector.
 
 ---
 
+## How to change the world layer
+
+**To move or add a place:** add an entry to `worldNodes` in
+`data/world-model.ts` with its real latitude and longitude, the role it plays,
+its causal-space position, the scenes it should be lit in, and the evidence ids
+that support the role. Zod validates the record at module load. Nothing else
+needs to change — the globe, the fallback SVG, the labels and the structure all
+read from that one list.
+
+**To add or change a route:** add to `worldArcs`. `after` states what the route
+becomes once the structure changes, and `reroute` names the waypoint a rerouted
+path runs through. A route that moves between the two arrangements is exactly a
+route with a `reroute`, and a unit test asserts that correspondence.
+
+**To change what a scene does:** edit its entry in `WORLD_SCENES`
+(`lib/world/state.ts`) for its anchors, camera framing, focus node, readout line
+and text alternative — and edit the ramps in `worldStateAt` for its visual
+behaviour. Keep both in step: the text alternative is the accessible equivalent
+of the scene, and a scene whose description no longer matches what it draws is a
+defect, not a cosmetic drift.
+
+**To re-pin a scene to a different section:** change its `anchors`. The scroll
+binding measures whatever ids are listed, in document order, and a scene may own
+more than one section.
+
+**To add a scene:** append to `WORLD_SCENES`, add its ramp to `worldStateAt`, and
+give the new section an `id`. `SCENE_COUNT` and the readout follow automatically;
+the unit tests will fail until the new scene has a text alternative.
+
+---
+
 ## How to replace demo data with real model output
 
 The schema already carries the fields real output needs, so nothing has to
@@ -579,16 +712,27 @@ nonce cannot reach, and rate limiting is in-process.
   is collapsed to its final state by the reduced-motion reset.
 - Diagrams are server-rendered SVG — no client JavaScript to draw them, and no
   layout shift when the interaction layer hydrates.
-- The Three.js chunk (~220 KB over the wire) is an _ambient enhancement_, never
-  content. It is dynamically imported with `ssr: false`, after first paint, and
-  only when WebGL exists, motion is not reduced, the connection is not reported
-  as slow or metered, and the device reports more than four cores and more than
-  4 GB of memory. Everything the field means is already on screen in SVG before
-  that decision is taken, so a reader who never receives it loses nothing.
-- The 3D frame loop switches to `demand` when its section leaves the viewport,
-  so an off-screen scene costs nothing.
-- Field geometry is built once with a seeded generator and never re-allocated;
-  per-frame work is one group rotation.
+- The Three.js chunk is an _enhancement_, never content. It is dynamically
+  imported with `ssr: false`, after first paint, and only when WebGL exists,
+  motion is not reduced, the connection is not reported as slow or metered, and
+  the device reports more than two cores and more than 2 GB of memory. Everything
+  the world layer means is already on screen in SVG before that decision is
+  taken, so a reader who never receives it loses nothing.
+- Devices between that floor and a comfortable desktop — and every viewport
+  under 820px — get the same scene at reduced complexity: a coarser graticule,
+  fewer landmass samples, fewer evidence markers, lower geometry detail and a
+  lower device-pixel-ratio ceiling. Weak devices are given less, not nothing.
+- One WebGL context for the whole page, asserted by test. The frame loop switches
+  to `demand` while the tab is hidden.
+- All world geometry — graticule, rings, routes, landmass, hypergraph buffers —
+  is built once and written in place afterwards. There are no per-frame
+  allocations, and the arc and hyperedge layers are one draw call each.
+- Scroll updates a ref, not React state: the continuous scene coordinate never
+  triggers a render, and only the scene index (thirteen changes over the whole
+  page) does.
+- Labels are DOM, positioned from a projection written directly to `style` in an
+  animation frame — real text at real font sizes, legible at 200% zoom, rather
+  than glyphs baked into a canvas.
 - Fonts self-hosted, `display: swap`, subset to latin.
 - No images in the critical path. The only raster asset the site serves is the
   generated OG card, which is never fetched by a reader.
@@ -620,9 +764,14 @@ inspector dialog, at 1440px, 360px and under reduced motion.
 - Contrast: every token pair used for text meets AA. `--color-dim-bone` was
   lightened from `#6f6c66` to `#85827a` after measuring 3.83:1 — the earlier
   value read well and failed.
+- The world layer behind the homepage is hidden from assistive technology, and
+  the same thirteen scenes are published beside it as prose — one described state
+  per scene — so nothing it shows is available only to people who can see it.
 - Reduced motion: every animation fills forwards, so collapsing durations lands
   on the complete final state rather than on an invisible one. No parallax, no
-  auto-camera, no scroll hijacking, and no WebGL scene at all.
+  auto-camera, no scroll hijacking, and no WebGL scene at all — under `reduce`
+  the world layer is a static SVG that swaps between states without transition,
+  and a test asserts that zero canvases are created.
 
 ---
 
@@ -662,6 +811,13 @@ These are enforced by tests where they can be, and by review where they cannot:
    its combination into one path is not.
 8. **Contact delivery is unconfigured** by default. An enquiry is logged, and the
    sender is told plainly that it was not delivered.
+9. **The world layer's landmass outlines are coarse.** They are hand-authored
+   polygons at roughly continental resolution, drawn to let a reader orient
+   themselves, and deliberately not precise enough to be read as a survey.
+10. **Three world routes are illustrative** — the container, bulk-mineral and
+    seaborne-energy flows exist to show what an arrangement of routes looks like
+    and what happens to one when it is rerouted. They carry no sourced quantity,
+    and they are marked `illustrative` in the data.
 
 ---
 

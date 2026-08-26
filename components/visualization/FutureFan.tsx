@@ -22,6 +22,10 @@ import { cn } from "@/lib/utils/cn";
 const WIDTH = 900;
 const HEIGHT = 380;
 const ORIGIN = { x: 96, y: HEIGHT / 2 };
+/* Branches stop short of the frame so that the longest label — "Managed
+   fragmentation", 11px mono — finishes inside the viewBox rather than being
+   clipped by it. */
+const BRANCH_END = WIDTH - 200;
 
 export function FutureFan({ className }: { className?: string }) {
   const [active, setActive] = useState<string>(futureBranches[0]!.id);
@@ -33,7 +37,7 @@ export function FutureFan({ className }: { className?: string }) {
       (index - (futureBranches.length - 1) / 2) / ((futureBranches.length - 1) / 2);
     return {
       branch,
-      end: { x: WIDTH - 150, y: ORIGIN.y + spread * 128 },
+      end: { x: BRANCH_END, y: ORIGIN.y + spread * 128 },
     };
   });
 
@@ -54,7 +58,7 @@ export function FutureFan({ className }: { className?: string }) {
         >
           {/* uncertainty widening with distance */}
           <path
-            d={`M ${ORIGIN.x} ${ORIGIN.y} L ${WIDTH - 120} ${ORIGIN.y - 168} L ${WIDTH - 120} ${ORIGIN.y + 168} Z`}
+            d={`M ${ORIGIN.x} ${ORIGIN.y} L ${BRANCH_END + 22} ${ORIGIN.y - 168} L ${BRANCH_END + 22} ${ORIGIN.y + 168} Z`}
             fill="var(--color-steel)"
             fillOpacity="0.045"
           />

@@ -1,12 +1,13 @@
-import { CausalField } from "@/components/visualization/CausalField";
 import { MapMonitorForecastLoop } from "@/components/visualization/MapMonitorForecastLoop";
 import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { SITE } from "@/lib/metadata/site";
 
 /* ACT 11 — YUKTHI'S BET
-   The reveal. The field, sparse and latent in Act 01, resolves. This is the only
-   place on the homepage that should feel still. */
+   The reveal. Behind this act the world layer completes its transformation: the
+   geographic shell is dropped, the nodes rearrange by causal relationship, and the
+   operating loop runs once across the section — map, monitor, forecast, simulate,
+   re-map. This is the only place on the homepage that should feel still. */
 export function YukthiBet() {
   return (
     <section
@@ -14,12 +15,6 @@ export function YukthiBet() {
       aria-labelledby="the-bet-heading"
       className="relative overflow-hidden border-t border-[color:var(--hairline)]"
     >
-      <CausalField
-        intensity={1}
-        staticCount={130}
-        sceneCount={300}
-        label="Resolving causal field"
-      />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_45%,rgba(7,8,8,0.55),rgba(7,8,8,0.94))]"

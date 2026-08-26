@@ -1,9 +1,12 @@
-import { CausalField } from "@/components/visualization/CausalField";
 import { SITE } from "@/lib/metadata/site";
 
 /* ACT 01 — INVOCATION
-   Nearly empty. One statement, one faint field, one way down. No call to action,
-   because there is nothing to ask for yet. */
+   Nearly empty. One statement, a horizon behind it, one way down. No call to
+   action, because there is nothing to ask for yet.
+
+   The field behind this act belongs to the world layer, which runs the length of
+   the page: here it is barely resolved — a horizon line and a few distant points
+   that have not yet been connected to anything. */
 export function Invocation() {
   return (
     <section
@@ -11,7 +14,6 @@ export function Invocation() {
       aria-labelledby="invocation-heading"
       className="relative flex min-h-[100svh] flex-col justify-between overflow-hidden"
     >
-      <CausalField intensity={0.18} staticCount={54} sceneCount={130} />
       <div aria-hidden="true" className="u-vignette pointer-events-none absolute inset-0" />
 
       <div className="u-gutter relative flex flex-1 flex-col justify-center pt-28 pb-16 sm:pt-32">

@@ -8,6 +8,7 @@ import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 import { scenarios } from "@/data/scenarios";
 import { ORDER_LABEL } from "@/lib/graph/tokens";
 import { track } from "@/lib/analytics/analytics";
+import { announceScope } from "@/lib/world/use-scene-progress";
 import { cn } from "@/lib/utils/cn";
 
 /* ============================================================================
@@ -56,6 +57,10 @@ export function ScenarioSelector({ className }: { className?: string }) {
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => {
                     setActiveId(scenario.id);
+                    // The world layer behind the page rebuilds around the chosen
+                    // scope. It listens rather than being driven, so this control
+                    // works identically with the layer absent.
+                    announceScope(scenario.id);
                     track("scenario_select", { scope: scenario.id });
                   }}
                   onKeyDown={(event) => {
@@ -70,6 +75,7 @@ export function ScenarioSelector({ className }: { className?: string }) {
                       event.preventDefault();
                       const next = scenarios[nextIndex]!;
                       setActiveId(next.id);
+                      announceScope(next.id);
                       document.getElementById(`scope-tab-${next.id}`)?.focus();
                     }
                   }}
