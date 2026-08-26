@@ -21,17 +21,52 @@ export const SITE = {
   lang: "en",
 } as const;
 
+const FALLBACK_ORIGIN = "http://localhost:3000";
+
+/** First value that is present *and* not blank. `??` is not enough here. */
+function firstMeaningful(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
 /**
- * Canonical origin. Set NEXT_PUBLIC_SITE_URL in the deployment environment.
- * Falls back to localhost so that local development produces valid absolute URLs.
+ * Canonical origin for every absolute URL the site emits.
+ *
+ * Resolution order: NEXT_PUBLIC_SITE_URL, then Vercel's production domain, then
+ * the current deployment URL, then localhost.
+ *
+ * Three things this function must never do, each learned the hard way:
+ *
+ *   1. Treat an empty string as a value. An environment variable that exists but
+ *      is blank — a variable added in a dashboard and left unfilled — is not a
+ *      configured origin. `??` only falls back on null and undefined, so it
+ *      passed `""` straight through to `new URL()`.
+ *   2. Require a protocol. Vercel's domain variables carry a bare hostname.
+ *   3. Throw. `metadataBase` is evaluated while Next collects page
+ *      configuration, so an exception here fails the entire build rather than
+ *      one route. A bad value degrades to the fallback instead.
  */
 export function siteUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000");
-  return raw.replace(/\/$/, "");
+  const configured = firstMeaningful(
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  );
+
+  if (!configured) return FALLBACK_ORIGIN;
+
+  const withProtocol = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+
+  try {
+    const url = new URL(withProtocol);
+    // Keep a base path if one was configured; drop any trailing slash.
+    return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    return FALLBACK_ORIGIN;
+  }
 }
 
 export function absoluteUrl(path = "/"): string {
