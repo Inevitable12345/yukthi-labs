@@ -148,7 +148,7 @@ request reaches a font CDN while a reader is reading.
 ## Folder structure
 
 ```
-yukthi-lab/
+.                               <- repository root; the app is NOT in a subfolder
 ├── app/
 │   ├── layout.tsx              root layout, fonts, providers
 │   ├── page.tsx                the twelve-act homepage
@@ -310,12 +310,27 @@ CHROMIUM_PATH=/path/to/chromium npm run test:e2e
 
 1. Import the repository.
 2. Framework preset: **Next.js**. Build `npm run build`, output `.next`.
-3. Set `NEXT_PUBLIC_SITE_URL` to the production origin, no trailing slash.
-4. Add any analytics or contact variables from the table above.
-5. Deploy.
+3. **Root Directory: leave it blank.** The application lives at the repository
+   root, not in a subfolder. Setting it to anything — including `yukthi-lab` —
+   fails the deploy with _"The specified Root Directory does not exist"_.
+4. Node version is pinned to 22.x by `engines.node`; leave Vercel's setting on
+   its default so it honours that.
+5. Optionally set `NEXT_PUBLIC_SITE_URL` and any analytics or contact variables
+   from the table above. None are required — see below.
+6. Deploy.
+
+No environment variable is required for a working deploy. `siteUrl()` falls back
+to `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel injects automatically, and it is
+only ever called from server components — so canonical URLs, Open Graph images,
+`robots.txt` and the sitemap all resolve correctly with nothing configured. Set
+`NEXT_PUBLIC_SITE_URL` explicitly once a custom domain is attached.
 
 Security headers are applied through `next.config.ts`, which Vercel honours — no
 `vercel.json` and no edge middleware are needed.
+
+**If the build fails**, the error is almost always one of three things: a Root
+Directory that is not blank, a Node version older than 20.9, or a stale build
+cache — redeploy with "Use existing Build Cache" unchecked.
 
 ### Any Node host
 

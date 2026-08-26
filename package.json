@@ -2,6 +2,9 @@
   "name": "yukthi-lab",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "description": "Yukthi Lab \u2014 a Scoped Causal Hypergraph-based World Model for consequential decisions.",
   "scripts": {
     "dev": "next dev",
