@@ -1,31 +1,31 @@
-import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
-/** See `lib/security/headers.ts` for the policy and the reasoning behind it. */
 import { securityHeaders } from "./lib/security/headers";
 
+/**
+ * Build configuration.
+ *
+ * The security headers live in `lib/security/headers` so that the same policy can be
+ * asserted by a unit test rather than only being trusted in production.
+ */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  pageExtensions: ["ts", "tsx", "mdx"],
   poweredByHeader: false,
+  productionBrowserSourceMaps: false,
+
+  experimental: {
+    // three, drei and gsap are large barrel-ish imports; this keeps the client
+    // bundle to what each route actually references.
+    optimizePackageImports: ["@react-three/drei", "three", "gsap", "motion"],
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
   },
+
   async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: securityHeaders(),
-      },
-    ];
+    return [{ source: "/:path*", headers: securityHeaders() }];
   },
 };
 
-const withMDX = createMDX({
-  options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
-  },
-});
-
-export default withMDX(nextConfig);
+export default nextConfig;

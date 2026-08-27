@@ -12,33 +12,33 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // The digest is the only identifier that maps to a server-side log entry.
-    console.error("Unhandled route error", error.digest ?? error.message);
+    console.error(error);
   }, [error]);
 
   return (
-    <section className="u-gutter flex min-h-screen flex-col justify-center py-40">
-      <InstrumentLabel tone="rupture">Runtime · fault</InstrumentLabel>
-      <h1 className="u-display-2 mt-8 max-w-3xl text-bone">
-        Something in this view failed to resolve.
-      </h1>
-      <p className="u-lede u-measure mt-6">
-        The rest of the site is unaffected. Re-resolving this view is usually enough.
+    <div className="u-gutter py-32">
+      <InstrumentLabel tone="rupture">Error</InstrumentLabel>
+      <h1 className="u-display-2 mt-6 max-w-[16ch] text-bone">Something failed to resolve.</h1>
+      <p className="u-lede u-measure mt-8">
+        The page could not be rendered. The argument itself is unaffected — try again, or start
+        from the beginning.
       </p>
-      <div className="mt-10">
+
+      <div className="mt-12 flex flex-wrap gap-8">
         <button
           type="button"
           onClick={reset}
-          className="min-h-11 border-b border-[color:var(--hairline-strong)] pb-1 font-mono text-[0.6875rem] tracking-[0.2em] text-bone uppercase transition-colors hover:border-gold hover:text-gold"
+          className="border border-gold px-6 py-3.5 font-mono text-[0.6875rem] tracking-[0.18em] text-gold uppercase transition-colors hover:bg-gold hover:text-void"
         >
-          Re-resolve view
+          Try again
         </button>
       </div>
+
       {error.digest ? (
-        <p className="mt-8 font-mono text-[0.625rem] tracking-[0.16em] text-dim-bone uppercase">
-          Digest {error.digest}
-        </p>
+        <InstrumentLabel as="p" className="mt-10">
+          Reference {error.digest}
+        </InstrumentLabel>
       ) : null}
-    </section>
+    </div>
   );
 }

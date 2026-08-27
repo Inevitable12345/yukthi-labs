@@ -1,13 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
-import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
-import { ConsentProvider } from "@/components/consent/ConsentProvider";
-import { CookieBanner } from "@/components/consent/CookieBanner";
 import { Footer } from "@/components/layout/Footer";
+import { OrganizationJsonLd } from "@/components/layout/JsonLd";
 import { SiteHeader } from "@/components/navigation/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
-import { OrganizationJsonLd } from "@/components/layout/JsonLd";
 import { SITE, siteUrl } from "@/lib/metadata/site";
 
 import "./globals.css";
@@ -36,13 +33,9 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: {
-    default: SITE.titleDefault,
-    template: SITE.titleTemplate,
-  },
+  title: { default: SITE.titleDefault, template: SITE.titleTemplate },
   description: SITE.description,
   applicationName: SITE.name,
-  generator: "Next.js",
   referrer: "strict-origin-when-cross-origin",
   formatDetection: { telephone: false, address: false, email: false },
   alternates: { canonical: "/" },
@@ -88,16 +81,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="bg-void text-bone antialiased">
-        <ConsentProvider>
-          <SkipLink />
-          <SiteHeader />
-          <main id="main" tabIndex={-1} className="relative focus:outline-none">
-            {children}
-          </main>
-          <Footer />
-          <CookieBanner />
-          <AnalyticsProvider />
-        </ConsentProvider>
+        <SkipLink />
+        <SiteHeader />
+        <main id="main" tabIndex={-1} className="relative focus:outline-none">
+          {children}
+        </main>
+        <Footer />
         <OrganizationJsonLd />
       </body>
     </html>

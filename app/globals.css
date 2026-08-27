@@ -1,24 +1,32 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   YUKTHI LAB — DESIGN TOKENS
+   YUKTHI LAB — DESIGN TOKENS (§4)
    ----------------------------------------------------------------------------
-   Semantics, not decoration:
-     void / deep-field  environment. the ground the argument stands on.
-     bone               the human-readable knowledge layer.
-     ceremonial gold    rare causal + mission emphasis. never a highlighter.
-     steel blue         evidence, state, computation.
-     rupture red        structural break, risk, discontinuity.
+   The palette is semantic, not decorative. Each colour means one thing and is
+   used for nothing else:
+
+     obsidian / deep field   the environment the argument stands in
+     warm ivory (bone)       the human-readable knowledge layer
+     mineral grey            supporting structure, secondary type
+     steel / evidence blue   evidence, state, computation
+     oxidized bronze (gold)  causal emphasis and mission. never a highlighter
+     rupture red             structural break and discontinuity. rare by rule
+
+   Explicitly rejected: neon cyberpunk, purple SaaS gradients, crypto-globe
+   aesthetics, heavy glassmorphism, gaming HUDs, generic glowing networks.
    ========================================================================== */
 
 @theme {
   --color-void: #070808;
   --color-deep-field: #0c0e0f;
   --color-substrate: #121516;
+  --color-mineral: #1a1e20;
+
   --color-bone: #ece7dc;
   --color-muted-bone: #aaa59c;
-  /* 5.2:1 on --void and 5.0:1 on --deep-field. The previous value read well but
-     measured 3.8:1, which fails WCAG AA for the small mono type it is used on. */
+  /* 5.2:1 on --void. Chosen by measurement: the warmer grey that read better
+     measured 3.8:1 and failed AA for the small mono type it is used on. */
   --color-dim-bone: #85827a;
 
   --color-gold: #bba36a;
@@ -53,6 +61,7 @@
     /* Editorial measure. The thesis is meant to be read, not scanned. */
     --measure: 34rem;
     --gutter: clamp(1.25rem, 5vw, 6rem);
+    --rail-width: 3.25rem;
   }
 }
 
@@ -67,8 +76,9 @@
 
   html {
     -webkit-text-size-adjust: 100%;
-    scroll-behavior: smooth;
     color-scheme: dark;
+    /* No smooth-scroll: ScrollTrigger owns scroll position, and CSS smoothing
+       fights it on anchor navigation. */
   }
 
   body {
@@ -120,10 +130,6 @@
     border-radius: 99px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(236, 231, 220, 0.22);
-  }
-
   svg text {
     font-family: var(--font-mono);
   }
@@ -143,7 +149,7 @@
   }
 
   /* Instrument label: the small capitalised mono type used for coordinates,
-     evidence IDs, section numbers and system state. */
+     evidence IDs, chapter numbers and system state. */
   .u-instrument {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
@@ -156,17 +162,15 @@
   .u-hairline-t {
     border-top: 1px solid var(--hairline);
   }
-
   .u-hairline-b {
     border-bottom: 1px solid var(--hairline);
   }
-
   .u-hairline-l {
     border-left: 1px solid var(--hairline);
   }
 
-  /* The observatory field: a fixed, static, extremely low-contrast graticule.
-     Static by design — no parallax, no mouse tracking. */
+  /* The observatory graticule: fixed, static, extremely low contrast.
+     No parallax, no mouse tracking — an instrument face, not a background. */
   .u-graticule {
     background-image:
       linear-gradient(to right, var(--hairline-faint) 1px, transparent 1px),
@@ -174,10 +178,24 @@
     background-size: 6rem 6rem;
   }
 
-  .u-vignette {
+  /* Seats the persistent world behind type at any scroll position, so copy
+     never lands on a bright cluster of nodes. */
+  .u-world-vignette {
     background:
-      radial-gradient(120% 90% at 50% 0%, rgba(125, 152, 167, 0.05) 0%, transparent 60%),
-      radial-gradient(100% 70% at 50% 100%, rgba(187, 163, 106, 0.035) 0%, transparent 65%);
+      radial-gradient(75% 55% at 50% 50%, transparent 0%, rgba(7, 8, 8, 0.72) 100%),
+      linear-gradient(
+        to bottom,
+        rgba(7, 8, 8, 0.55) 0%,
+        transparent 22%,
+        transparent 78%,
+        rgba(7, 8, 8, 0.72) 100%
+      );
+  }
+
+  /* Panels that sit over the world and must stay readable. */
+  .u-panel {
+    background: color-mix(in srgb, var(--color-void) 82%, transparent);
+    backdrop-filter: blur(6px);
   }
 
   .u-sr-only {
@@ -228,59 +246,31 @@
     line-height: 1.72;
     color: var(--color-muted-bone);
   }
+
+  /* Wide diagrams scroll inside their own frame. The page body never scrolls
+     horizontally. */
+  .u-figure-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 /* ============================================================================
-   CAUSAL MOTION
+   MOTION
    ----------------------------------------------------------------------------
-   Motion here is semantic. Elements arrive in causal order — a path activates in
-   the direction the mechanism runs — and nothing arrives before the reader can
-   see it. Under `prefers-reduced-motion` the global reset above collapses every
-   duration to zero, and because each animation fills forwards, the diagram lands
-   on its complete final state instead of disappearing.
+   Motion here is semantic: elements arrive in causal order, and a path activates
+   in the direction its mechanism runs. Nothing arrives before it can be read.
    ========================================================================== */
 
 @layer utilities {
-  .u-causal-in {
-    opacity: 0;
-    animation: causal-in 620ms var(--ease-instrument) forwards;
-    animation-delay: var(--delay, 0ms);
-  }
-
-  @keyframes causal-in {
+  @keyframes world-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
     }
     to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .u-edge-in {
-    opacity: 0;
-    animation: edge-in 760ms var(--ease-settle) forwards;
-    animation-delay: var(--delay, 0ms);
-  }
-
-  @keyframes edge-in {
-    to {
-      opacity: 1;
-    }
-  }
-
-  /* Stability: a slow, regular pulse. Rupture never uses this. */
-  .u-recurrent {
-    animation: recurrent 7s ease-in-out infinite;
-  }
-
-  @keyframes recurrent {
-    0%,
-    100% {
-      opacity: 0.55;
-    }
-    50% {
       opacity: 1;
     }
   }
@@ -302,30 +292,48 @@
     }
   }
 
-  /* Horizontal scroll frame for wide diagrams. The page body never scrolls. */
-  .u-figure-scroll {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    /* Without these, a wide SVG inside an auto-sized grid or flex track expands
-       the track instead of scrolling, and the whole page gains a scrollbar. */
-    max-width: 100%;
-    min-width: 0;
+  .u-causal-in {
+    opacity: 0;
+    animation: causal-in 620ms var(--ease-instrument) forwards;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  @keyframes causal-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Stability: a slow, regular pulse. Rupture never uses this. */
+  .u-recurrent {
+    animation: recurrent 7s ease-in-out infinite;
+  }
+
+  @keyframes recurrent {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 }
 
 /* ============================================================================
-   REDUCED MOTION
+   REDUCED MOTION (§31)
    ----------------------------------------------------------------------------
    Nothing on this site depends on animation to be understood. Under reduce,
-   every sequence resolves immediately to its final, complete state.
+   every sequence resolves immediately to its final, complete state — and because
+   each animation fills forwards, diagrams land finished rather than disappearing.
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {
@@ -336,13 +344,12 @@
   }
 }
 
-/* Print: the argument should survive being printed. */
+/* The argument should survive being printed. */
 @media print {
   body {
     background: #fff;
     color: #000;
   }
-
   .u-no-print {
     display: none !important;
   }

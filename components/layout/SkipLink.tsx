@@ -1,9 +1,9 @@
-/** First tab stop on every page. Visible only when focused. */
+/** First focusable element on every page. Visible the moment it receives focus. */
 export function SkipLink() {
   return (
     <a
       href="#main"
-      className="u-no-print fixed top-3 left-3 z-[100] -translate-y-24 border border-gold bg-void px-4 py-3 font-mono text-xs tracking-[0.18em] text-gold uppercase transition-transform duration-200 focus:translate-y-0"
+      className="u-instrument sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:border focus:border-gold focus:bg-void focus:px-4 focus:py-3 focus:text-bone"
     >
       Skip to content
     </a>

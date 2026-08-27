@@ -1,28 +1,32 @@
 import { SITE, siteUrl } from "@/lib/metadata/site";
 
 /**
- * Organization structured data.
+ * Structured data.
  *
- * Only fields that are verifiably true are emitted: the lab's name, its site, what
- * it describes itself as building. No address, no founding date, no employee count,
- * no social profiles — none of that has been supplied, so none of it is asserted.
+ * Emitted as a script tag with JSON.stringify rather than a template literal, so
+ * a stray character in the content cannot break out of the script context.
  */
-export function OrganizationJsonLd() {
-  const data = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: SITE.name,
-    url: siteUrl(),
-    description: SITE.description,
-    logo: `${siteUrl()}/icons/mark.svg`,
-    slogan: SITE.mission,
-  };
-
+function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      // Serialised from a literal above; no user input reaches this string.
+      // The payload is authored constants, and stringify escapes the rest.
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
+export function OrganizationJsonLd() {
+  return (
+    <JsonLdScript
+      data={{
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: SITE.name,
+        url: siteUrl(),
+        description: SITE.description,
+        slogan: SITE.mission,
+      }}
     />
   );
 }
@@ -36,23 +40,16 @@ export function WebPageJsonLd({
   description: string;
   path: string;
 }) {
-  const data = {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    name,
-    description,
-    url: `${siteUrl()}${path}`,
-    isPartOf: {
-      "@type": "WebSite",
-      name: SITE.name,
-      url: siteUrl(),
-    },
-  };
-
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    <JsonLdScript
+      data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name,
+        description,
+        url: `${siteUrl()}${path}`,
+        isPartOf: { "@type": "WebSite", name: SITE.name, url: siteUrl() },
+      }}
     />
   );
 }

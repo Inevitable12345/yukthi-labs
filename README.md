@@ -1,668 +1,125 @@
 # Yukthi Lab
 
-> **Bring certainty to an increasingly unstable world.**
+**Bring certainty to an increasingly unstable world.**
 
-The production website for Yukthi Lab: a digital mission system built around a
-**Scoped Causal Hypergraph-based World Model**, and the argument for why one is
-needed now.
+A production Next.js application that presents Yukthi Lab's thesis as an
+interactive argument rather than a landing page. The visitor scrolls through
+thirteen chapters while a persistent WebGL instrument transforms from an abstract
+globe into a causal hypergraph — because that transformation _is_ the argument.
 
-It is not a landing page. The homepage is a twelve-act sequence that makes a
-case — the world's causal structure is changing, historically fitted models fail
-exactly when that happens, machine reasoning has become capable enough to
-maintain an explicit causal representation continuously — and every factual claim
-in it resolves to a source record you can open where it stands.
-
-```
-Map → Monitor → Forecast → Simulate → Re-map
-```
+The technical bet: a **Scoped Causal Hypergraph-based World Model**.
+The operating loop: **Map → Monitor → Forecast → Simulate → Re-map**.
 
 ---
 
-## Contents
-
-- [Project overview](#project-overview)
-- [Architecture](#architecture)
-- [Stack](#stack)
-- [Folder structure](#folder-structure)
-- [Installation](#installation)
-- [Environment variables](#environment-variables)
-- [Development](#development)
-- [Build](#build)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [The evidence data model](#the-evidence-data-model)
-- [How to add a source](#how-to-add-a-source)
-- [How to add a research article](#how-to-add-a-research-article)
-- [How to add a field note](#how-to-add-a-field-note)
-- [How to add a causal scenario](#how-to-add-a-causal-scenario)
-- [How to replace demo data with real model output](#how-to-replace-demo-data-with-real-model-output)
-- [Security notes](#security-notes)
-- [Privacy and consent notes](#privacy-and-consent-notes)
-- [Performance notes](#performance-notes)
-- [Accessibility notes](#accessibility-notes)
-- [Editorial rules](#editorial-rules)
-- [Known limitations](#known-limitations)
-
----
-
-## Project overview
-
-| Route                            | What it is                                                                         |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
-| `/`                              | The thesis as a twelve-act sequence, with the evidence attached                    |
-| `/thesis`                        | The same argument long-form, in ten numbered sections                              |
-| `/architecture`                  | Ten layers from scope to decision support, each with its maturity and open problem |
-| `/evidence`                      | The complete source record, filterable by category and verification status         |
-| `/research`                      | Deliberately empty. Nothing has been produced, so nothing is listed                |
-| `/field-notes`                   | Dated readings of published evidence, authored as MDX                              |
-| `/field-notes/[slug]`            | An individual note, with the evidence it rests on                                  |
-| `/about`                         | Mission, method, proof grounds, and the collaboration form                         |
-| `/privacy`, `/cookies`, `/terms` | Legal, written to describe this site specifically                                  |
-| `/og`                            | Generated Open Graph card                                                          |
-| `/robots.txt`, `/sitemap.xml`    | Generated from the route table and the content registries                          |
-| `404`                            | A route index rather than a dead end                                               |
-
-### The twelve acts
-
-| #   | Act                          | What it does                                                           |
-| --- | ---------------------------- | ---------------------------------------------------------------------- |
-| 01  | Invocation                   | The mission, a faint causal field, one way down                        |
-| 02  | The stable operating system  | Why extrapolation was once the correct method                          |
-| 03  | The rupture                  | Topology changes; the nodes barely move                                |
-| 04  | The evidence field           | The argument stops being assertion                                     |
-| 05  | Rare-earth cascade           | A concentrated upstream input beneath trillions of downstream activity |
-| 06  | The linear model fails       | Chain versus hypergraph, switched by the reader                        |
-| 07  | Structural break             | Why a well-built model fails on schedule when the regime moves         |
-| 08  | Feedback cascade             | Winter Storm Uri as a reinforcing loop                                 |
-| —   | Convergence _(interstitial)_ | The forces are one connected system                                    |
-| 09  | The 3 a.m. problem           | A decision frame, six scopes, three causal steps each                  |
-| 10  | The opening created by AI    | Five capabilities, each with its limit attached                        |
-| 11  | Yukthi's bet                 | The reveal, and the operating loop                                     |
-| 12  | Civilizational ambition      | A horizon, not a footer                                                |
-
----
-
-## Architecture
-
-### The representation
-
-Everything on the site is built on one data structure, defined in `data/schema.ts`:
-
-- **`CausalNode`** — a state, actor, event, market, policy, mechanism, asset,
-  risk, outcome, infrastructure or geography, with an optional observed state,
-  evidence references, and an `illustrative` flag.
-- **`CausalRelation`** — a **hyperedge**: `sourceIds[] → targetIds[]`, carrying a
-  mechanism, polarity, causal order, state (`active` / `latent` / `broken` /
-  `contested`), evidence, and alternative hypotheses.
-- **`EvidenceRecord`** — a claim, its provenance, its context, its causal
-  relevance, and an explicit verification `status`.
-
-A hyperedge rather than an edge, because an ordinary graph can only say _A
-affects C_. To describe the 2021 semiconductor shortage you need to say _A, B and
-D together produce C, and none of them does alone_ — a relation between **sets**.
-That sentence has no representation in a pairwise graph. Every diagram on the
-site draws a hyperedge as `sources → junction → targets`; the junction is that
-claim, made visible.
-
-Every graph is validated with Zod at module load, so a malformed diagram fails
-the build rather than rendering something misleading.
-
-### Rendering strategy
-
-| Layer                | Technology                   | Why                                                                                                    |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Causal diagrams      | Server-rendered SVG          | Accessible, printable, readable with JavaScript disabled, and crisp at any zoom                        |
-| Interaction          | Client islands over that SVG | Nodes are focusable controls; the diagram itself is static markup                                      |
-| Ambient causal field | 2D SVG, upgraded to WebGL    | The static field renders on the server; React Three Fiber loads afterwards, only where it is warranted |
-| Layout and prose     | React Server Components      | No client JavaScript for anything that does not need it                                                |
-
-The 3D scene is skipped entirely under `prefers-reduced-motion`, without WebGL,
-on a device reporting two cores or fewer, and when data-saver is on. The static
-field is not a fallback — it is the same picture, and it is what renders first.
-
----
-
-## Stack
-
-|               |                                                      |
-| ------------- | ---------------------------------------------------- |
-| Framework     | Next.js 16 (App Router, Turbopack)                   |
-| Language      | TypeScript 5.9, `strict`                             |
-| UI            | React 19                                             |
-| Styling       | Tailwind CSS v4 with semantic design tokens          |
-| Motion        | CSS animations, Motion available for choreography    |
-| 3D            | Three.js + React Three Fiber, lazily loaded          |
-| Content       | MDX for field notes and research                     |
-| Validation    | Zod v4                                               |
-| Unit tests    | Vitest + Testing Library                             |
-| End-to-end    | Playwright across desktop, mobile and reduced-motion |
-| Accessibility | `@axe-core/playwright`                               |
-| Lint / format | ESLint 9 flat config, Prettier                       |
-
-Fonts are Cormorant Garamond, IBM Plex Sans and IBM Plex Mono — all open source,
-self-hosted at build time by `next/font`, with system-safe fallback stacks. No
-request reaches a font CDN while a reader is reading.
-
----
-
-## Folder structure
-
-```
-.                               <- repository root; the app is NOT in a subfolder
-├── app/
-│   ├── layout.tsx              root layout, fonts, providers
-│   ├── page.tsx                the twelve-act homepage
-│   ├── globals.css             design tokens, base layer, motion, reduced motion
-│   ├── thesis/                 long-form argument
-│   ├── architecture/           ten layers + benchmarks
-│   ├── evidence/               source library
-│   ├── research/               empty by design
-│   ├── field-notes/            index + [slug]
-│   ├── about/                  mission, method, collaboration form
-│   ├── privacy/ cookies/ terms/
-│   ├── api/contact/route.ts    validated, rate-limited enquiry endpoint
-│   ├── og/route.tsx            generated Open Graph card
-│   ├── sitemap.ts robots.ts not-found.tsx error.tsx
-│
-├── components/
-│   ├── analytics/              consent-gated provider mount
-│   ├── architecture/           layer accordion, conceptual flow
-│   ├── brand/                  mark, wordmark
-│   ├── consent/                provider, banner, preferences
-│   ├── contact/                collaboration form
-│   ├── evidence/               marker, drawer, card, field, library, status chip
-│   ├── home/                   one component per act
-│   ├── hypergraph/             renderer, glyphs, inspector, legend, text alternative
-│   ├── layout/                 shell, prose, footer, skip link, JSON-LD
-│   ├── navigation/             header, index drawer
-│   ├── scenario/               the 3 a.m. decision frame
-│   ├── thesis/                 section, sticky index
-│   ├── ui/                     dialog, hairline, instrument label, action link
-│   └── visualization/          break chart, order trace, future fan, loop, causal field
-│
-├── content/
-│   ├── field-notes/            *.mdx + registry.ts
-│   └── research/               registry.ts (empty)
-│
-├── data/                       schema.ts + one file per causal graph
-├── lib/
-│   ├── analytics/ consent/ contact/ graph/ metadata/ security/ utils/
-├── public/icons/
-├── tests/
-│   ├── unit/ accessibility/ e2e/
-├── .env.example  next.config.ts  playwright.config.ts  vitest.config.ts
-```
-
----
-
-## Installation
-
-Requires **Node.js 20.9+** (22 LTS recommended) and npm 10+.
-
-```bash
-git clone <repository-url> yukthi-lab
-cd yukthi-lab
-npm install
-cp .env.example .env.local
-```
-
----
-
-## Environment variables
-
-Every variable is optional except `NEXT_PUBLIC_SITE_URL`, and the site runs
-correctly with none of them set. See `.env.example` for the annotated list.
-
-| Variable                                 | Required       | Purpose                                                                              |
-| ---------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_SITE_URL`                   | For production | Canonical origin for metadata, Open Graph, robots and sitemap                        |
-| `NEXT_PUBLIC_ANALYTICS_PROVIDER`         | No             | `plausible` \| `posthog` \| `ga4`. Empty means no analytics script is ever requested |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` / `_HOST` | With plausible |                                                                                      |
-| `NEXT_PUBLIC_POSTHOG_KEY` / `_HOST`      | With posthog   |                                                                                      |
-| `NEXT_PUBLIC_GA_ID`                      | With ga4       |                                                                                      |
-| `CONTACT_PROVIDER`                       | No             | `resend` \| `log`. Empty behaves as `log`                                            |
-| `CONTACT_API_KEY`                        | With resend    | **Server-only.** Never prefix with `NEXT_PUBLIC_`                                    |
-| `CONTACT_TO_EMAIL`                       | With resend    | Where enquiries are delivered                                                        |
-| `CONTACT_FROM_EMAIL`                     | With resend    | Verified sender address                                                              |
-
-Setting an analytics provider automatically widens the Content-Security-Policy
-to that provider's origins — see `analyticsOrigins()` in
-`lib/security/headers.ts`. There is no second place to update.
-
----
-
-## Development
-
-```bash
-npm run dev          # http://localhost:3000
-npm run lint         # ESLint flat config
-npm run typecheck    # tsc --noEmit
-npm run format       # Prettier
-```
-
----
-
-## Build
-
-```bash
-npm run build
-npm run start        # serves the production build on :3000
-```
-
-The build fails on a TypeScript error, an ESLint error, or a Zod violation in
-any evidence record or causal graph.
-
----
-
-## Testing
-
-```bash
-npm test             # Vitest: schema integrity, geometry, consent, security, components
-npm run test:e2e     # Playwright: routes, homepage, navigation, accessibility
-```
-
-`npm run test:e2e` builds nothing — run `npm run build` first. Playwright starts
-the production server itself. To use a pre-installed browser rather than
-downloading one:
-
-```bash
-CHROMIUM_PATH=/path/to/chromium npm run test:e2e
-```
-
-### What is covered
-
-**Unit and component (94 tests)**
-
-- every evidence record satisfies the schema, has a unique ID, and states a status
-- no record carries a non-HTTPS or malformed URL
-- every verified record has a source, a date and a checked-on date
-- every causal graph validates, references only nodes it contains and only
-  evidence that exists, and carries a text alternative
-- illustrative graphs mark every node as illustrative or evidenced
-- geometry: projection, centroids, hyperedge junctions, downstream tracing by order
-- label wrapping never drops a word
-- consent: defaults, round-trip, version rejection, forced-necessary
-- analytics sends nothing without consent _and_ a provider
-- CSP directives, rate-limit windows, contact validation and the honeypot
-- evidence marker naming, dialog behaviour, tablist semantics, banner parity
-
-**End-to-end (174 tests across desktop, mobile 360px and reduced-motion)**
-
-- every route returns 200, renders exactly one `h1`, and logs no console errors
-- no horizontal overflow on any route at any of the three viewports
-- all twelve acts present and reachable
-- causal node → inspector → Escape; evidence marker → drawer; diagram text alternative
-- decision-scope selector, representation toggle, thesis section index
-- index drawer opens, traps focus across a full tab cycle, closes on Escape
-- skip link is the first tab stop and moves focus to `main`
-- consent: nothing stored before a choice; reject writes necessary-only; reopen from footer
-- security headers present and correct on a production response
-- contact endpoint: 422 with field errors, 415 for non-JSON, 405 for GET
-- **axe** WCAG 2.1 A/AA scan on eight routes, plus the open inspector dialog
-- heading order coherent; 200% zoom without a horizontal scrollbar
-- reduced motion: nothing left invisible, and no WebGL canvas created
-
----
-
-## Deployment
-
-### Vercel
-
-1. Import the repository.
-2. Framework preset: **Next.js**. Build `npm run build`, output `.next`.
-3. **Root Directory: leave it blank.** The application lives at the repository
-   root, not in a subfolder. Setting it to anything — including `yukthi-lab` —
-   fails the deploy with _"The specified Root Directory does not exist"_.
-4. Node version is pinned to 22.x by `engines.node`; leave Vercel's setting on
-   its default so it honours that.
-5. Optionally set `NEXT_PUBLIC_SITE_URL` and any analytics or contact variables
-   from the table above. None are required — see below.
-6. Deploy.
-
-No environment variable is required for a working deploy. `siteUrl()` falls back
-to `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel injects automatically, and it is
-only ever called from server components — so canonical URLs, Open Graph images,
-`robots.txt` and the sitemap all resolve correctly with nothing configured. Set
-`NEXT_PUBLIC_SITE_URL` explicitly once a custom domain is attached.
-
-Security headers are applied through `next.config.ts`, which Vercel honours — no
-`vercel.json` and no edge middleware are needed.
-
-**If the build fails**, the error is almost always one of three things: a Root
-Directory that is not blank, a Node version older than 20.9, or a stale build
-cache — redeploy with "Use existing Build Cache" unchecked.
-
-### Any Node host
+## Quick start
 
 ```bash
 npm ci
-npm run build
-NEXT_PUBLIC_SITE_URL=https://your-domain npm run start
+npm run dev          # http://localhost:3000
 ```
 
-Serve behind a TLS-terminating proxy. The application emits HSTS, which browsers
-ignore over plain HTTP, so no conditional configuration is required. If the proxy
-sets `x-forwarded-for`, the contact rate limiter will key on the real client
-address.
-
-### Docker
-
-```dockerfile
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM node:22-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=build /app ./
-EXPOSE 3000
-CMD ["npm", "run", "start"]
-```
-
-### Post-deploy checks
+Verify everything before shipping:
 
 ```bash
-curl -sI https://your-domain | grep -i 'content-security-policy\|strict-transport'
-curl -s  https://your-domain/robots.txt
-curl -s  https://your-domain/sitemap.xml | head
-curl -sI https://your-domain/og | grep -i content-type   # image/png
+npm run verify       # lint → typecheck → unit tests → production build
+npm run test:e2e     # Playwright, desktop + mobile, including axe WCAG checks
 ```
 
----
+## Scripts
 
-## The evidence data model
+| Script            | Does                                                    |
+| ----------------- | ------------------------------------------------------- |
+| `dev`             | Development server                                      |
+| `build` / `start` | Production build and serve                              |
+| `lint`            | ESLint (flat config)                                    |
+| `typecheck`       | `tsc --noEmit`, strict, with `noUncheckedIndexedAccess` |
+| `test`            | Vitest — 94 unit and component tests                    |
+| `test:e2e`        | Playwright — 73 tests across desktop and mobile         |
+| `verify`          | The gate: lint, typecheck, test, build                  |
+| `format`          | Prettier                                                |
 
-```ts
-export interface EvidenceRecord {
-  id: string; // E-001 … E-999, unique
-  title: string;
-  organization?: string; // who published it
-  publication?: string; // the specific document
-  date?: string; // when it was published
-  url?: string; // omitted rather than guessed
-  claim: string; // the one sentence it is cited for
-  context?: string; // scenario conditions, hedges, what it does not say
-  causalRelevance?: string; // why it matters causally, not just that it is interesting
-  categories: EvidenceCategory[];
-  status: "verified" | "needs-verification" | "illustrative";
-  accessedAt?: string; // when the source was last checked
-}
-```
+## Routes
 
-**Status means something specific:**
+| Route                | Purpose                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| `/`                  | The argument. Thirteen chapters, one persistent causal world.          |
+| `/thesis`            | The same argument as a long-form essay.                                |
+| `/technology`        | What "Scoped Causal Hypergraph-based World Model" means, term by term. |
+| `/evidence`          | Every source behind every claim, with what each figure does not say.   |
+| `/research`          | Open problems and the four proof questions.                            |
+| `/contact`           | Validated, rate-limited contact flow.                                  |
+| `/privacy`, `/terms` | Legal. Short, because there is little to describe.                     |
 
-- **verified** — checked against the cited publication. Units, scenario
-  conditions and hedges preserved. A range is never quoted as a point estimate.
-- **needs-verification** — recorded from a secondary summary; the primary
-  document has not been read end to end. Shown with this label everywhere it is
-  cited. Never quietly promoted, never quietly dropped.
-- **illustrative** — not a factual claim. A mechanism drawn to explain how
-  something could propagate.
+## Stack
 
----
+Next.js 16 · React 19 · TypeScript (strict) · Three.js + React Three Fiber ·
+GSAP + ScrollTrigger · Tailwind CSS v4 · Zod · Vitest · Playwright
 
-## How to add a source
+## How it works
 
-1. Append a record to `evidenceRecords` in `data/evidence.ts` with the next free
-   ID.
-2. Write the `claim` as one sentence the cited document actually supports.
-3. Put the scenario conditions and hedges in `context` — this is where a
-   figure's "under full implementation" or "in a severe scenario" belongs.
-4. Write `causalRelevance`: why the claim matters causally.
-5. Set `status`. If you have not opened the primary document, it is
-   `needs-verification`. That is not a failure state; leaving it wrong is.
-6. Set `accessedAt` to the date you checked it. Add a `url` only if you visited
-   it and it resolves. **Never invent a URL** — omit the field and the card will
-   say "No stable link recorded".
-7. `npm test` — the schema, ID uniqueness, URL and completeness checks run there.
+Three documents cover the design:
 
-Cite it inline anywhere with `<EvidenceMarker id="E-018" />`, including inside
-MDX.
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — the story state machine,
+  the eight world forms, progressive enhancement, and why the ESLint config makes
+  exactly one scoped exception.
+- **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** — build, environment, and the
+  **two things to configure before production**.
+- **[`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md)** — licences, including a note
+  on GSAP's licence being non-OSI.
 
----
+The short version: there is one set of nodes, each holding a position in eight
+different layouts. The world interpolates between two of them every frame. The
+globe at the start and the hypergraph at the end are literally the same object,
+which is the claim the site is making.
 
-## How to add a research article
+## Two things to configure before production
 
-1. Create `content/research/<slug>.mdx`.
-2. Export the metadata:
+1. **`NEXT_PUBLIC_SITE_URL`** — otherwise canonical URLs point at localhost.
+2. **Contact delivery** — `lib/contact/adapter.ts` ships a logging
+   implementation. Submissions are validated, rate limited and logged, but **not
+   emailed**. Implement `ContactDelivery` for your provider.
 
-   ```mdx
-   export const meta = {
-     slug: "calibration-under-structural-change",
-     title: "Calibration under structural change",
-     date: "2026-11-04",
-     summary: "One sentence.",
-     kind: "evaluation", // paper | technical-note | experiment | evaluation | benchmark
-     status: "published", // draft | published
-   };
-   ```
+Also read the note in `docs/DEPLOYMENT.md` about the in-memory rate limiter
+becoming per-instance on serverless hosting.
 
-3. Import it in `content/research/registry.ts` and push it into `entries`.
+## Editorial rules this codebase enforces
 
-`/research` switches from its empty state to the list automatically, and the
-sitemap picks the entry up. **Do not add a placeholder.** The page says nothing
-has been produced because nothing has, and that is the point.
+These are enforced by tests and types, not by intention:
 
----
+- **Every causal relation carries a mechanism.** A relation without one is an
+  association wearing a causal label. Required by the schema.
+- **No scenario contains a probability.** A test serialises the scenario data and
+  fails if one appears. A fabricated probability is worse than none, because it
+  invites the reliance it cannot support.
+- **Every claim declares its epistemic class** — observed fact, source claim,
+  Yukthi interpretation, illustrative scenario, or product ambition — and they
+  render distinctly.
+- **Every evidence record states what its figure does not say.** A number without
+  its limits is a misquotation.
+- **Unverified sources are labelled**, everywhere they appear, rather than
+  quietly omitted.
+- **Nothing is fabricated.** There are no customers, pilots, traction figures,
+  accuracy claims, partnerships or market sizes on this site, because none exist.
+  Publishing them would contradict the argument the site makes about evidence.
 
-## How to add a field note
+## Accessibility
 
-Identical, in `content/field-notes/`, with `tags: string[]` and optional
-`evidenceIds: string[]`. Listed evidence is rendered in full at the foot of the
-note. Notes sort newest-first by `date`.
+The complete argument is static HTML. An end-to-end test runs with JavaScript
+disabled and asserts the thesis, evidence and conclusion all survive.
 
-Field notes are the lab's own readings of published evidence. They argue; they do
-not report results. Any factual claim inside one needs an `<EvidenceMarker />`.
+Every route passes axe WCAG 2.1 A/AA with zero violations, on desktop and mobile.
+Reduced motion is a first-class path, not a fallback: pinning is disabled, the
+frameloop runs on demand, and all content is present at once.
 
----
+## Content sources
 
-## How to add a causal scenario
+Seventeen evidence records from the IMF, WTO, WEF, IEA, CSIS, FERC/NERC, the ECB,
+AlixPartners, Swiss Re and peer-reviewed forecasting research. Fifteen verified
+against the cited publication; two labelled unverified wherever they appear.
 
-**A decision scope** (the 3 a.m. selector) — append to `scenarios` in
-`data/scenarios.ts`: a `role`, the `question` that role loses sleep over, the
-`assumption` that would have to break, and a three-step `trace` of `{ order,
-label, mechanism }`. `illustrative: true` is required by the type.
+## Licence
 
-**A causal graph** — add a file to `data/`:
-
-```ts
-export const myGraph: CausalGraph = causalGraphSchema.parse({
-  id: "my-graph",
-  title: "…",
-  scope: "The decision this structure was mapped for",
-  illustrative: false, // false only if the structure was observed
-  evidenceIds: ["E-004"],
-  textAlternative: "A full prose reading — this is what a screen reader gets.",
-  nodes: [
-    {
-      id: "n1",
-      label: "…",
-      kind: "policy",
-      position: { x: 0.1, y: 0.5 }, // normalised 0–1
-      labelSide: "below", // above | below | left | right
-      state: "…",
-      evidenceIds: ["E-004"],
-    },
-  ],
-  relations: [
-    {
-      id: "r1",
-      sourceIds: ["n1", "n2"], // more than one source makes it a hyperedge
-      targetIds: ["n3"],
-      label: "joint constraint",
-      mechanism: "How the effect is transmitted.",
-      polarity: "negative",
-      order: 1,
-      state: "active",
-      alternatives: ["A reading that would also explain the observation."],
-    },
-  ],
-});
-```
-
-Render it with `<CausalHypergraph graph={myGraph} height={560} minWidth={1000} />`.
-
-Layout is authored, not force-simulated: a causal argument reads in a particular
-order, and a physics layout would scramble it on every load. Use `labelSide` to
-resolve collisions. Only hyperedges and second- or third-order relations get a
-label on the canvas; everything else is one click away in the inspector.
-
----
-
-## How to replace demo data with real model output
-
-The schema already carries the fields real output needs, so nothing has to
-migrate.
-
-1. **Probabilities.** `FutureBranch.probability` and `calibrationStatus` exist
-   and are deliberately `undefined` in `data/futures.ts`. Populate them and
-   remove the "No probability attached" line in
-   `components/visualization/FutureFan.tsx`.
-2. **Confidence.** `CausalNode.confidence` and `CausalRelation.confidence` render
-   as a percentage in the inspector when present, and as "Not recorded — no
-   calibrated estimate exists" when absent. Populating them is enough.
-3. **Illustrative flags.** Flip `illustrative: false` on a graph _only_ when its
-   structure was observed rather than constructed. The `IllustrativeBadge`
-   disappears on its own.
-4. **Timestamps.** `CausalNode.timestamp` drives the inspector's "Last update".
-   A live monitor should write it on every state change.
-5. **Relation state.** `active` / `latent` / `broken` / `contested` is what a
-   monitor should be updating. A relation can break while every node it connects
-   looks unchanged — that transition is the thing worth surfacing.
-6. **Serving.** `CausalGraph` is plain JSON. Swap the static import for a fetch
-   and keep `causalGraphSchema.parse()` at the boundary, so bad output fails
-   loudly instead of rendering.
-
----
-
-## Security notes
-
-Full detail in [`SECURITY.md`](./SECURITY.md). In short: hardened headers set in
-one place (`lib/security/headers.ts`), Zod validation on the server, rate
-limiting, a honeypot and a minimum submission time, no cookies, no session, no
-secrets in the client bundle, and `rel="noopener noreferrer"` on every outbound
-link.
-
-Two limitations are documented rather than papered over: `script-src` permits
-inline scripts because Next.js 16 serves a prerendered shell that a per-request
-nonce cannot reach, and rate limiting is in-process.
-
----
-
-## Privacy and consent notes
-
-- **One storage key**, `yukthi.consent.v1`: four booleans and a timestamp. No
-  identifier. Never transmitted.
-- **Necessary-only by default.** Nothing optional is pre-checked.
-- **No dark patterns.** "Reject optional", "Accept all" and "Choose categories"
-  are the same size, weight and colour — a unit test asserts their class lists
-  are identical.
-- **Analytics loads only after consent.** The script tag is not rendered at all
-  until the category is granted, so no request reaches a third party first.
-- **A closed event list.** `lib/analytics/events.ts` is the complete set. No
-  free text, no reading history beyond those events.
-- **Consent is an external store.** Read through `useSyncExternalStore` over
-  `localStorage`, so the UI cannot drift from what is persisted and a decision
-  made in one tab propagates to the others.
-
----
-
-## Performance notes
-
-- Server Components by default; client boundaries kept narrow and explicit.
-- No animation library is bundled. Every entrance, sequence and loop on the site
-  is CSS keyframes with an ordered `--delay`, which costs nothing at runtime and
-  is collapsed to its final state by the reduced-motion reset.
-- Diagrams are server-rendered SVG — no client JavaScript to draw them, and no
-  layout shift when the interaction layer hydrates.
-- The Three.js chunk (~220 KB over the wire) is an _ambient enhancement_, never
-  content. It is dynamically imported with `ssr: false`, after first paint, and
-  only when WebGL exists, motion is not reduced, the connection is not reported
-  as slow or metered, and the device reports more than four cores and more than
-  4 GB of memory. Everything the field means is already on screen in SVG before
-  that decision is taken, so a reader who never receives it loses nothing.
-- The 3D frame loop switches to `demand` when its section leaves the viewport,
-  so an off-screen scene costs nothing.
-- Field geometry is built once with a seeded generator and never re-allocated;
-  per-frame work is one group rotation.
-- Fonts self-hosted, `display: swap`, subset to latin.
-- No images in the critical path. The only raster asset the site serves is the
-  generated OG card, which is never fetched by a reader.
-- Fixed viewBoxes and reserved figure heights: CLS is structurally near zero.
-- Wide diagrams scroll inside their own frame; the page body never scrolls
-  sideways at any tested viewport.
-
----
-
-## Accessibility notes
-
-Target: **WCAG 2.2 AA**. Verified with axe on every content route and on the open
-inspector dialog, at 1440px, 360px and under reduced motion.
-
-- Semantic landmarks, one `h1` per route, no heading-level jumps.
-- Skip link as the first tab stop, moving focus to `main`.
-- Every causal node is a focusable control with a descriptive accessible name;
-  Enter and Space open the inspector.
-- Every diagram has a prose alternative **always present in the DOM** — a
-  `<details>` a keyboard user can open, not a hover-only tooltip.
-- Colour is never the only carrier: relation state also has a stroke pattern,
-  causal order also has a printed degree.
-- Diagram text is drawn with a halo so it stays legible where it crosses an edge.
-- Dialogs: `role="dialog"`, `aria-modal`, focus trapped, Escape closes, focus
-  restored, background scroll locked.
-- A scrollable figure with no interactive content is itself focusable, so a
-  keyboard user can reach the off-screen part.
-- Touch targets are at least 44px.
-- Contrast: every token pair used for text meets AA. `--color-dim-bone` was
-  lightened from `#6f6c66` to `#85827a` after measuring 3.83:1 — the earlier
-  value read well and failed.
-- Reduced motion: every animation fills forwards, so collapsing durations lands
-  on the complete final state rather than on an invisible one. No parallax, no
-  auto-camera, no scroll hijacking, and no WebGL scene at all.
-
----
-
-## Editorial rules
-
-These are enforced by tests where they can be, and by review where they cannot:
-
-- No invented customers, partnerships, publications, benchmark results, model
-  accuracy figures, probabilities or case-study outcomes.
-- No invented URLs. A record with no verified link says so.
-- No claim that the system predicts the future. The promise is _know what could
-  break before it becomes your 3 a.m. problem_.
-- No claim that AI outperforms trained superforecasters. The evidence shows
-  frontier models past a general crowd baseline and still behind experts, and the
-  site says exactly that.
-- Illustrative material is labelled where it appears, not in a footnote.
-- Absent data renders as "Not recorded". Filling an empty field with a plausible
-  number would be the most damaging thing this interface could do.
-
----
-
-## Known limitations
-
-1. **`script-src 'unsafe-inline'`** — see [`SECURITY.md`](./SECURITY.md).
-2. **In-process rate limiting** — per-instance, not per-fleet.
-3. **`/research` is empty** — by design. Nothing has been produced.
-4. **No architecture layer is past concept or open research** — no evidence of
-   greater maturity has been supplied, so none is claimed.
-5. **Two evidence records are unverified** — `E-009` (ECB Economic Bulletin
-   3/2022, recorded from a secondary summary) and `E-014` (a preprint). Both are
-   labelled wherever they appear.
-6. **No calibrated probabilities exist.** The future fan shows four branches at
-   equal weight because weighting them would imply a number no model produced.
-7. **Illustrative structures**: the stable lattice, the ruptured topology, the
-   linear chain, the insurance accumulation graph and the convergence chain are
-   explanatory constructions. Each stage of the convergence chain is evidenced;
-   its combination into one path is not.
-8. **Contact delivery is unconfigured** by default. An enquiry is logged, and the
-   sender is told plainly that it was not delivered.
-
----
-
-© Yukthi Lab. Illustrative diagrams are labelled as such and are not model output.
+Source code: MIT. Written content and evidence characterisations: © Yukthi Lab.
+Cited documents remain the property of their publishers — see
+[`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md).

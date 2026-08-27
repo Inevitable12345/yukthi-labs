@@ -1,73 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-import { MobileNav } from "./MobileNav";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PRIMARY_NAV } from "@/lib/metadata/site";
 import { cn } from "@/lib/utils/cn";
 
 /**
- * Minimal header.
+ * The header.
  *
- * On the homepage it begins as a wordmark and a menu control alone; the route list
- * resolves once the reader has left the invocation. On every other route the full
- * navigation is present immediately — a reader who arrived deep in the site should
- * never have to scroll to find their way out.
+ * Static rather than sticky. A fixed header over a scroll-driven narrative
+ * competes with the argument for attention and steals vertical space on exactly
+ * the devices with least to spare — and the chapter rail already provides
+ * continuous position feedback.
  */
 export function SiteHeader() {
   const pathname = usePathname();
-  const isHome = pathname === "/";
-  const [scrollState, setScrollState] = useState({ revealed: !isHome, scrolled: false });
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  /**
-   * A single scroll subscription drives both pieces of header state. The initial
-   * read happens in an animation frame rather than synchronously in the effect,
-   * so a reader who reloads halfway down the page still gets the right header
-   * without a layout read during commit.
-   */
-  useEffect(() => {
-    let frame = 0;
-
-    const read = () => {
-      const y = window.scrollY;
-      setScrollState({
-        revealed: isHome ? y > window.innerHeight * 0.6 : true,
-        scrolled: y > 24,
-      });
-    };
-
-    frame = window.requestAnimationFrame(read);
-    window.addEventListener("scroll", read, { passive: true });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", read);
-    };
-  }, [isHome]);
-
-  const { revealed, scrolled } = scrollState;
+  // The menu closes when a link inside it is chosen. Doing this on the click
+  // rather than in an effect watching the pathname means the state changes for
+  // the reason it actually changed, and there is no render-then-correct cycle.
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header
-      className={cn(
-        "u-no-print fixed inset-x-0 top-0 z-[70] transition-colors duration-500",
-        scrolled
-          ? "border-b border-[color:var(--hairline)] bg-void/88 backdrop-blur-[6px]"
-          : "border-b border-transparent",
-      )}
-    >
-      <div className="u-gutter flex h-16 items-center justify-between gap-6 sm:h-[4.5rem]">
+    <header className="u-gutter u-no-print relative z-40 border-b border-[color:var(--hairline)] py-5">
+      <div className="flex items-center justify-between gap-6">
         <Wordmark />
 
-        <nav aria-label="Primary" className="hidden lg:block">
-          <ul
-            className={cn(
-              "flex items-center gap-8 transition-opacity duration-700",
-              revealed ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-          >
+        <nav aria-label="Primary" className="hidden md:block">
+          <ul className="flex items-center gap-8">
             {PRIMARY_NAV.map((route) => {
               const active = pathname === route.href || pathname.startsWith(`${route.href}/`);
               return (
@@ -76,21 +40,11 @@ export function SiteHeader() {
                     href={route.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative py-2 font-mono text-[0.6875rem] tracking-[0.2em] uppercase transition-colors duration-300",
+                      "font-mono text-[0.6875rem] tracking-[0.16em] uppercase transition-colors",
                       active ? "text-gold" : "text-muted-bone hover:text-bone",
                     )}
-                    tabIndex={revealed ? undefined : -1}
                   >
                     {route.label}
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute -bottom-0.5 left-0 h-px w-full origin-left transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                        active
-                          ? "scale-x-100 bg-gold"
-                          : "scale-x-0 bg-[color:var(--hairline-strong)]",
-                      )}
-                    />
                   </Link>
                 </li>
               );
@@ -98,8 +52,43 @@ export function SiteHeader() {
           </ul>
         </nav>
 
-        <MobileNav />
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-nav"
+          className="u-instrument border border-[color:var(--hairline)] px-3 py-2 text-bone md:hidden"
+        >
+          {menuOpen ? "Close" : "Menu"}
+        </button>
       </div>
+
+      {menuOpen ? (
+        <nav id="mobile-nav" aria-label="Primary" className="mt-6 md:hidden">
+          <ul className="space-y-0">
+            {PRIMARY_NAV.map((route) => {
+              const active = pathname === route.href || pathname.startsWith(`${route.href}/`);
+              return (
+                <li key={route.href} className="border-t border-[color:var(--hairline)]">
+                  <Link
+                    href={route.href}
+                    onClick={closeMenu}
+                    aria-current={active ? "page" : undefined}
+                    className={cn("block py-4", active ? "text-gold" : "text-bone")}
+                  >
+                    <span className="font-mono text-[0.75rem] tracking-[0.16em] uppercase">
+                      {route.label}
+                    </span>
+                    <span className="u-body mt-1 block text-[0.8125rem]">
+                      {route.description}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      ) : null}
     </header>
   );
 }

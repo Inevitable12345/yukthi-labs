@@ -1,200 +1,216 @@
-import { scenarioSchema, type Scenario } from "./schema";
+import { z } from "zod";
 
 /* ============================================================================
-   THE 3 A.M. PROBLEM
+   ILLUSTRATIVE SCENARIOS (§18)
    ----------------------------------------------------------------------------
-   Six decision scopes. Each carries the question the role actually loses sleep
-   over, the assumption that would have to break for it to matter, and a three-step
-   causal trace.
+   The "What breaks next?" demo.
 
-   Every trace is `illustrative: true`. These are mechanisms a scoped model would
-   be built to reason about — not findings, not forecasts, and not a claim that
-   this particular path is live for any particular organisation.
+   Every one of these is an ILLUSTRATIVE SCENARIO and is labelled as such
+   wherever it appears. Specifically, and without exception:
+
+     · no probability values. Not one. A number here would be fabricated, and a
+       fabricated probability is worse than no probability because it invites
+       exactly the reliance it cannot support;
+     · no claim that any of these paths is currently active;
+     · no named companies, no named counterparties, no invented incidents;
+     · the mechanisms are real and sourced. The *arrangement* is explanatory.
+
+   What this demonstrates is the shape of an answer a scoped causal model would
+   produce — which is a claim about architecture, not about output.
    ========================================================================== */
 
-export const scenarios: Scenario[] = [
-  {
-    id: "industry",
-    label: "Industry",
-    role: "Automotive / industrial COO",
-    question:
-      "Which tiny component somewhere in my Tier-3 supply chain can shut down a multi-billion-dollar production line next month?",
-    assumption:
-      "That the components you cannot name are commodity inputs with substitutable sources.",
-    illustrative: true,
-    evidenceIds: ["E-004", "E-005", "E-006", "E-007"],
-    trace: [
-      {
-        order: 1,
-        label: "Upstream licensing or capacity event",
-        mechanism:
-          "A control action or single-site failure two or three tiers below your direct suppliers changes availability without changing any price you monitor.",
-      },
-      {
-        order: 2,
-        label: "Allocation at the tier you cannot see",
-        mechanism:
-          "Scarce supply is allocated by contract and relationship. Your position in that queue was set long before the constraint appeared.",
-      },
-      {
-        order: 3,
-        label: "Line stoppage on a part worth cents",
-        mechanism:
-          "A line stops for the cheapest missing item as readily as for the most expensive one. Bill-of-materials value does not predict stoppage risk.",
-      },
-    ],
-  },
-  {
-    id: "energy",
-    label: "Energy",
-    role: "Energy trader / grid operator / utility CRO",
-    question:
-      "What combination of weather, fuel availability, grid conditions, infrastructure and geopolitics could invalidate tomorrow's forecast?",
-    assumption: "That fuel supply is independent of the electricity system it supplies.",
-    illustrative: true,
-    evidenceIds: ["E-010", "E-015"],
-    trace: [
-      {
-        order: 1,
-        label: "Simultaneous demand peak and supply derate",
-        mechanism:
-          "The conditions that raise load are frequently the same conditions that reduce available capacity. The correlation is physical, not statistical.",
-      },
-      {
-        order: 2,
-        label: "Fuel infrastructure loses its own power supply",
-        mechanism:
-          "Production, compression and processing draw from the grid they feed. Load shed becomes fuel loss, which becomes further generation loss.",
-      },
-      {
-        order: 3,
-        label: "Reinforcement outruns the response window",
-        mechanism:
-          "Once the loop is turning, each cycle shortens the time available to intervene in the next.",
-      },
-    ],
-  },
-  {
-    id: "insurance",
-    label: "Insurance",
-    role: "Insurance CRO / MGA / reinsurer",
-    question:
-      "Where is risk accumulating inside my book that my historical loss model has not learned yet?",
-    assumption:
-      "That policies written under different perils, in different lines, remain independent in a loss year.",
-    illustrative: true,
-    evidenceIds: ["E-011"],
-    trace: [
-      {
-        order: 1,
-        label: "Exposure grows where the record is thin",
-        mechanism:
-          "Value is built in places the historical loss record barely covers. The hazard need not change for the loss to.",
-      },
-      {
-        order: 2,
-        label: "Shared infrastructure correlates separate policies",
-        mechanism:
-          "One failed utility interrupts many insureds simultaneously. The correlation was always there; only the trigger was missing.",
-      },
-      {
-        order: 3,
-        label: "Legal and regulatory conditions set severity",
-        mechanism:
-          "The same claim resolves differently under different regimes. That variable sits outside every peril model.",
-      },
-    ],
-  },
-  {
-    id: "supply-chain",
-    label: "Supply chain",
-    role: "Supply-chain / procurement executive",
-    question:
-      "If a strategic supplier or major country changes policy tomorrow, what breaks first?",
-    assumption: "That diversified suppliers imply diversified dependency.",
-    illustrative: true,
-    evidenceIds: ["E-004", "E-016", "E-017"],
-    trace: [
-      {
-        order: 1,
-        label: "Policy changes the cost of a route, not its existence",
-        mechanism:
-          "Tariffs, licensing and screening rarely close a path outright. They make it slower and more expensive, which is harder to detect and just as binding.",
-      },
-      {
-        order: 2,
-        label: "Qualified alternatives are fewer than contracted ones",
-        mechanism:
-          "Several suppliers of record can resolve to one qualified process, one certification, or one facility.",
-      },
-      {
-        order: 3,
-        label: "Requalification is measured in quarters",
-        mechanism:
-          "The substitution that exists on paper takes longer than the disruption it was meant to absorb.",
-      },
-    ],
-  },
-  {
-    id: "portfolio",
-    label: "Portfolio",
-    role: "Portfolio manager / bank CRO",
-    question:
-      "Which assumption connecting my assets stops being true under the next geopolitical regime?",
-    assumption:
-      "That the correlation structure estimated from history survives a change in what generates it.",
-    illustrative: true,
-    evidenceIds: ["E-001", "E-002", "E-008"],
-    trace: [
-      {
-        order: 1,
-        label: "A policy action re-prices a shared input",
-        mechanism:
-          "Energy, freight, a critical material or a funding channel that sits behind many positions at once.",
-      },
-      {
-        order: 2,
-        label: "Diversification collapses toward the shared factor",
-        mechanism:
-          "Holdings that diversified across sectors need not diversify across inputs. The hedge fails precisely when it is needed.",
-      },
-      {
-        order: 3,
-        label: "The estimated correlation matrix describes the old regime",
-        mechanism:
-          "Risk systems calibrated on the prior structure understate joint loss exactly during the transition they were meant to survive.",
-      },
-    ],
-  },
-  {
-    id: "government",
-    label: "Government",
-    role: "Government / strategic decision-maker",
-    question:
-      "If we impose this sanction, tariff or export restriction, what happens three causal steps later?",
-    assumption: "That the first-order effect is the effect.",
-    illustrative: true,
-    evidenceIds: ["E-004", "E-006", "E-016"],
-    trace: [
-      {
-        order: 1,
-        label: "The intended target is constrained",
-        mechanism: "The first-order effect is the one the measure was designed to produce.",
-      },
-      {
-        order: 2,
-        label: "Counterparties reroute and substitute",
-        mechanism:
-          "Adaptation begins immediately. Trade re-forms around the constraint, often through third parties.",
-      },
-      {
-        order: 3,
-        label: "Domestic industries meet the return path",
-        mechanism:
-          "Retaliation, re-pricing and reciprocal control land on sectors that were not part of the original decision — and were not modelled when it was taken.",
-      },
-    ],
-  },
-].map((scenario) => scenarioSchema.parse(scenario));
+export const scenarioSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  /** The condition that changes. */
+  change: z.string().min(1),
+  scopeId: z.string().min(1),
+  propagation: z.array(z.string()).min(2),
+  affected: z.array(z.string()).min(3),
+  secondOrder: z.array(z.string()).min(2),
+  thirdOrder: z.array(z.string()).min(2),
+  monitor: z.array(z.string()).min(2),
+  interventions: z.array(z.string()).min(2),
+  evidenceIds: z.array(z.string()).min(1),
+});
 
-export const scenarioById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+export type Scenario = z.infer<typeof scenarioSchema>;
+
+const scenarios: Scenario[] = [
+  {
+    id: "rare-earth",
+    label: "Rare-earth export restriction",
+    change:
+      "Licensing throughput for medium and heavy rare earths and finished magnets tightens further.",
+    scopeId: "industrial",
+    evidenceIds: ["E-005", "E-006", "E-007", "E-008"],
+    propagation: [
+      "Refining and separation capacity, where roughly 90% of global capability sits",
+      "Magnet production, the form in which the constraint reaches manufacturers",
+      "Tier-2 and Tier-3 suppliers, below the level most buyers monitor",
+      "Component factories producing motors, actuators and sensors",
+    ],
+    affected: [
+      "Automotive assembly",
+      "Defence systems with long qualification cycles",
+      "Wind generation and grid equipment",
+      "Semiconductor tooling",
+      "Robotics and industrial automation",
+    ],
+    secondOrder: [
+      "Allocation shifts toward buyers with contractual priority, moving the shortage rather than resolving it",
+      "Substitution programmes start, but qualification time — not engineering time — sets the pace",
+      "Inventory is drawn down in an order determined by bill-of-materials position, not by part value",
+    ],
+    thirdOrder: [
+      "Production schedules move, and the revenue effect lands one or two quarters after the licensing change",
+      "Capital reallocates toward non-concentrated processing capacity, on a build timeline of years",
+      "The constrained capability becomes an explicit industrial-policy objective in importing economies",
+    ],
+    monitor: [
+      "Licence approval throughput, not headline policy announcements",
+      "Which nominally independent suppliers resolve to the same refiner",
+      "Qualification status of alternate parts, before it is needed",
+      "Inventory depletion order across the bill of materials",
+    ],
+    interventions: [
+      "Qualify alternates ahead of constraint, while the queue is short",
+      "Map suppliers to shared upstream nodes rather than counting supplier names",
+      "Hold buffer specifically at the parts whose graph position — not price — makes them critical",
+      "Contract for licence-contingent priority rather than for volume alone",
+    ],
+  },
+  {
+    id: "grid-event",
+    label: "Extreme-weather grid event",
+    change:
+      "A multi-day extreme cold event coincides with peak heating demand across an interconnected region.",
+    scopeId: "energy",
+    evidenceIds: ["E-012", "E-014"],
+    propagation: [
+      "Generating units derate or fail as unwinterised equipment freezes",
+      "Reserve margin erodes while demand climbs",
+      "Load shedding begins",
+      "Gas production and processing sites lose the electricity they depend on",
+    ],
+    affected: [
+      "Electricity customers, including critical facilities",
+      "Gas-fired generation losing fuel supply",
+      "Water and telecommunications systems dependent on power",
+      "Industrial load with no ride-through capability",
+      "Wholesale power and gas markets",
+    ],
+    secondOrder: [
+      "The outage removes fuel from the generation that would have ended it — the loop reinforces rather than damps",
+      "Restoration is slowed by the same conditions that caused the failure",
+      "Market prices reach levels that create counterparty exposure independent of the physical event",
+    ],
+    thirdOrder: [
+      "Insured and uninsured losses diverge sharply, since much of the damage falls outside standard cover",
+      "Winterisation and critical-load designation become regulatory requirements",
+      "Capacity and reserve market design is revisited across neighbouring jurisdictions",
+    ],
+    monitor: [
+      "Joint distribution of temperature and fuel availability, never each alone",
+      "Which gas infrastructure sits on non-critical electrical load",
+      "Equipment winterisation status against the temperatures actually forecast",
+      "Correlation between demand peak and supply derate, not their separate levels",
+    ],
+    interventions: [
+      "Designate fuel infrastructure as critical load before the event, not during it",
+      "Winterise against observed extremes rather than historical design conditions",
+      "Pre-position restoration crews on the joint forecast",
+      "Contract for firm fuel with physical, not financial, delivery assurance",
+    ],
+  },
+  {
+    id: "semiconductor",
+    label: "Semiconductor capacity disruption",
+    change:
+      "A concentrated node in fabrication, assembly or test goes offline for an extended period.",
+    scopeId: "supply-chain",
+    evidenceIds: ["E-009"],
+    propagation: [
+      "Wafer or package allocation is re-cut across all customers of that node",
+      "Customers without contractual priority move down the queue",
+      "Lead times extend well past inventory coverage",
+      "Downstream assembly halts on specific part numbers",
+    ],
+    affected: [
+      "Vehicle production lines",
+      "Industrial and consumer electronics",
+      "Medical and aerospace devices with long qualification cycles",
+      "Distributors holding allocation risk",
+      "Any product whose bill of materials includes a single-sourced part",
+    ],
+    secondOrder: [
+      "Double-ordering distorts the demand signal, and the distortion outlasts the disruption",
+      "Redesign to alternate parts begins, bounded by qualification rather than by engineering",
+      "Spot-market pricing decouples from contract pricing for the affected parts",
+    ],
+    thirdOrder: [
+      "Loss estimates are revised upward as additional pathways become visible — the 2021 shortage's estimate nearly doubled within a single quarter",
+      "Inventory policy shifts from just-in-time toward buffered, changing working capital structurally",
+      "Fabrication capacity becomes a matter of industrial policy rather than of procurement",
+    ],
+    monitor: [
+      "Single-site concentration for each critical part number",
+      "Qualification status of alternates, maintained before it is needed",
+      "Order-book distortion from double-ordering",
+      "Whether your own loss estimate is being revised, and in which direction",
+    ],
+    interventions: [
+      "Maintain qualified alternates for parts whose graph position makes them critical",
+      "Buffer by causal position rather than by unit cost",
+      "Contract for allocation priority explicitly",
+      "Treat a forecast that must be revised as evidence about the model, not only about the world",
+    ],
+  },
+  {
+    id: "tariff",
+    label: "Strategic tariff escalation",
+    change:
+      "Tariffs are imposed on a strategically significant category, and reciprocal measures follow.",
+    scopeId: "government",
+    evidenceIds: ["E-001", "E-002", "E-003"],
+    propagation: [
+      "Landed cost rises for the targeted category",
+      "Trade reroutes through third countries and through reclassification",
+      "Reciprocal measures land on an adjacent sector, not the originating one",
+      "Investment decisions reprice against a changed expected policy path",
+    ],
+    affected: [
+      "Importers and their downstream customers",
+      "Exporters in the sector chosen for reciprocity",
+      "Logistics networks absorbing rerouted volume",
+      "Domestic producers of substitutes",
+      "Consumer prices in the affected categories",
+    ],
+    secondOrder: [
+      "Rerouting recovers part of the flow while raising system-wide cost — the trade continues, less efficiently",
+      "Reciprocity lands on a sector chosen for leverage rather than for symmetry",
+      "Firms hedge by holding more inventory and more supplier relationships than efficiency alone would justify",
+    ],
+    thirdOrder: [
+      "Trade reorganises along geopolitical lines: growth between blocs slows relative to growth within them",
+      "Fragmentation costs accrue as foregone output rather than as a visible event — IMF staff put the long-run range at roughly 0.2% to nearly 7% of global GDP depending on depth",
+      "The measure becomes structural, and the counterfactual becomes unobservable",
+    ],
+    monitor: [
+      "Third-country flows that suggest rerouting rather than substitution",
+      "Which adjacent sector holds the most reciprocal leverage",
+      "Whether trade within blocs is growing faster than trade between them",
+      "Domestic capacity actually built, against capacity announced",
+    ],
+    interventions: [
+      "Model the reciprocal step before the first one is taken, in the department that owns the exposed sector",
+      "Identify the adjacent sectors that carry retaliation exposure",
+      "Sequence measures against domestic capacity that exists rather than capacity that is planned",
+      "Set an explicit review point, since the counterfactual stops being observable quickly",
+    ],
+  },
+];
+
+export const demoScenarios: Scenario[] = scenarios.map((scenario) =>
+  scenarioSchema.parse(scenario),
+);

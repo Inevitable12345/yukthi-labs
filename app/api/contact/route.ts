@@ -1,61 +1,36 @@
 import { NextResponse } from "next/server";
 
-import { deliverEnquiry } from "@/lib/contact/adapter";
-import { MIN_HUMAN_ELAPSED_MS, contactSchema } from "@/lib/contact/schema";
-import { clientKey, hit } from "@/lib/security/rate-limit";
+import { getContactDelivery } from "@/lib/contact/adapter";
+import { contactSchema, fieldErrors } from "@/lib/contact/schema";
+import { rateLimit } from "@/lib/security/rate-limit";
+
+/* ============================================================================
+   CONTACT ENDPOINT (§34)
+   ----------------------------------------------------------------------------
+   Server-side validation, rate limiting, honeypot handling, and no reflection of
+   user input in any response.
+   ========================================================================== */
 
 export const runtime = "nodejs";
+/** Never cached, never statically analysed into a build artifact. */
 export const dynamic = "force-dynamic";
 
-const WINDOW_MS = 60 * 60 * 1000;
-const LIMIT = 5;
+function clientKey(request: Request): string {
+  // Behind a proxy the first entry of x-forwarded-for is the client. This is
+  // spoofable by a determined caller, which is why the limiter is one layer of
+  // defence rather than the only one.
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  return `contact:${ip}`;
+}
 
-/**
- * Collaboration enquiries.
- *
- * Order of checks matters: protocol shape first (constant-time header reads), then
- * the rate limit, then body validation, then the bot heuristics, then delivery.
- * A malformed protocol request is refused without spending the caller's quota.
- *
- * The two bot checks fail *silently* — they return the same success shape a real
- * submission gets. A bot that can tell rejection from acceptance can iterate until
- * it finds a payload that passes; one that cannot, cannot.
- *
- * CSRF: this route accepts only `application/json` and same-origin `POST`. A
- * cross-origin HTML form cannot send that content type without a preflight, and
- * the preflight is not answered. `form-action 'self'` in the CSP closes the other
- * direction. There is no session or cookie for a forged request to ride on.
- */
 export async function POST(request: Request) {
-  // Protocol checks first: they are constant-time header reads, and a request that
-  // is not even shaped like an enquiry should not consume an enquiry's quota.
-  if (!request.headers.get("content-type")?.includes("application/json")) {
-    return NextResponse.json(
-      { ok: false, error: "Expected application/json." },
-      { status: 415 },
-    );
-  }
+  const limit = rateLimit(clientKey(request), { limit: 5, windowMs: 10 * 60_000 });
 
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host) {
-        return NextResponse.json(
-          { ok: false, error: "Cross-origin request." },
-          { status: 403 },
-        );
-      }
-    } catch {
-      return NextResponse.json({ ok: false, error: "Bad origin." }, { status: 400 });
-    }
-  }
-
-  const limit = hit(clientKey(request.headers, "contact"), LIMIT, WINDOW_MS);
-  if (!limit.allowed) {
+  if (!limit.ok) {
     return NextResponse.json(
-      { ok: false, error: "Too many enquiries from this address. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      { ok: false, message: "Too many submissions. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
     );
   }
 
@@ -63,51 +38,35 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Malformed request body." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, message: "Could not read that submission." },
+      { status: 400 },
+    );
   }
 
   const parsed = contactSchema.safeParse(payload);
+
   if (!parsed.success) {
-    const flattened = parsed.error.flatten();
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Some fields need attention.",
-        fieldErrors: flattened.fieldErrors,
-      },
+      { ok: false, message: "Some fields need attention.", errors: fieldErrors(parsed.error) },
       { status: 422 },
     );
   }
 
-  const input = parsed.data;
-
-  // Honeypot filled, or submitted faster than a person could type it.
-  const looksAutomated =
-    (input.website ?? "") !== "" ||
-    (typeof input.elapsedMs === "number" && input.elapsedMs < MIN_HUMAN_ELAPSED_MS);
-
-  if (looksAutomated) {
-    return NextResponse.json({ ok: true }, { status: 200 });
+  // Honeypot: accept and discard. A bot told it failed simply retries.
+  if (parsed.data.website) {
+    return NextResponse.json({ ok: true, message: "Thank you — message received." });
   }
 
-  const result = await deliverEnquiry(input);
-
-  if (!result.delivered) {
-    // The reason is for the operator's log, never for the client.
-    console.warn(`[contact] not delivered via ${result.provider}: ${result.reason}`);
+  try {
+    await getContactDelivery().deliver(parsed.data);
+  } catch (error) {
+    console.error("[contact] delivery failed", error);
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "This site is not currently configured to deliver messages. Nothing was sent — please try again later.",
-      },
-      { status: 503 },
+      { ok: false, message: "Something went wrong sending that. Please try again." },
+      { status: 500 },
     );
   }
 
-  return NextResponse.json({ ok: true }, { status: 200 });
-}
-
-export function GET() {
-  return NextResponse.json({ ok: false, error: "Method not allowed." }, { status: 405 });
+  return NextResponse.json({ ok: true, message: "Thank you — message received." });
 }

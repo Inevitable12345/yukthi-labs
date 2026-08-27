@@ -3,14 +3,57 @@ import { z } from "zod";
 /* ============================================================================
    CAUSAL SCHEMA
    ----------------------------------------------------------------------------
-   The representation the whole site is built on: typed states, typed
-   relationships between *sets* of states (hyperedges, not edges), and evidence
-   that attaches to both.
+   The representation the entire site is built on.
 
-   Two invariants are enforced by these types rather than by convention:
-     1. anything not drawn from a source is `illustrative: true`;
-     2. every evidence record carries an explicit verification `status`.
+   Two commitments are enforced by these types rather than by convention:
+
+     1. A relation connects *sets* to *sets*. Pairwise edges are the degenerate
+        case, not the primitive. This is what makes the structure a hypergraph
+        and it is the reason the type is called `CausalRelation` and not `Edge`.
+
+     2. Every assertion carries an explicit epistemic class. Nothing rendered on
+        this site is allowed to be ambiguous about whether it was observed,
+        claimed by a source, interpreted by Yukthi, or invented to explain a
+        mechanism.
    ========================================================================== */
+
+/**
+ * The five epistemic classes (§2 of the brief).
+ *
+ * These are rendered with distinct visual treatments everywhere they appear. A
+ * reader must never have to guess which one they are looking at.
+ */
+export const claimClassSchema = z.enum([
+  /** Measured and reported by a named institution. */
+  "observed-fact",
+  /** Asserted by a named source, including its own hedging. */
+  "source-claim",
+  /** Yukthi's reading of what the evidence means. Argued, not measured. */
+  "yukthi-interpretation",
+  /** A mechanism drawn to explain how something works. Not a finding. */
+  "illustrative-scenario",
+  /** What the product intends to do, and does not yet do. */
+  "product-ambition",
+]);
+
+export type ClaimClass = z.infer<typeof claimClassSchema>;
+
+export const CLAIM_CLASS_LABEL: Record<ClaimClass, string> = {
+  "observed-fact": "Observed fact",
+  "source-claim": "Source claim",
+  "yukthi-interpretation": "Yukthi interpretation",
+  "illustrative-scenario": "Illustrative scenario",
+  "product-ambition": "Product ambition",
+};
+
+/** One-line explanation shown in the legend and in every source drawer. */
+export const CLAIM_CLASS_DEFINITION: Record<ClaimClass, string> = {
+  "observed-fact": "Measured and published by the named institution.",
+  "source-claim": "Asserted by the named source, carrying that source's own hedges.",
+  "yukthi-interpretation": "Yukthi's reading of the evidence. An argument, not a measurement.",
+  "illustrative-scenario": "A mechanism drawn to explain how something could propagate.",
+  "product-ambition": "What Yukthi intends to build. Not a description of what exists.",
+};
 
 export const nodeKindSchema = z.enum([
   "actor",
@@ -18,12 +61,11 @@ export const nodeKindSchema = z.enum([
   "market",
   "risk",
   "policy",
-  "asset",
+  "resource",
+  "infrastructure",
   "mechanism",
-  "evidence",
   "state",
   "outcome",
-  "infrastructure",
   "geography",
 ]);
 
@@ -36,71 +78,85 @@ export const causalNodeSchema = z.object({
   description: z.string().optional(),
   /** Observed or assumed condition of this node right now. */
   state: z.string().optional(),
-  /** 0–1. Only present where a defensible basis exists. Never a decorative number. */
-  confidence: z.number().min(0).max(1).optional(),
-  timestamp: z.string().optional(),
   /** The decision this node was mapped for. Structure is scoped, never global. */
   scope: z.string().optional(),
   evidenceIds: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
-  /** True when the node exists to explain a mechanism, not to report an observation. */
-  illustrative: z.boolean().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  claimClass: claimClassSchema.default("illustrative-scenario"),
 });
 
 export type CausalNode = z.infer<typeof causalNodeSchema>;
 
+/**
+ * A hyperedge.
+ *
+ * `sourceIds` and `targetIds` are both arrays because the situations this site
+ * exists to describe are conjunctive: cold weather AND unwinterised equipment AND
+ * gas-fired generation share produce an outage. Decomposing that into three
+ * pairwise arrows loses the conjunction, which is the part that matters.
+ */
 export const causalRelationSchema = z.object({
   id: z.string().min(1),
-  /** A hyperedge: many sources may be jointly required to produce many targets. */
   sourceIds: z.array(z.string()).min(1),
   targetIds: z.array(z.string()).min(1),
   label: z.string().optional(),
   /** How the effect is transmitted. The part a correlation cannot supply. */
-  mechanism: z.string().optional(),
-  polarity: z.enum(["positive", "negative", "mixed", "unknown"]).optional(),
-  confidence: z.number().min(0).max(1).optional(),
-  evidenceIds: z.array(z.string()).optional(),
+  mechanism: z.string().min(1),
+  polarity: z.enum(["positive", "negative", "mixed", "unknown"]).default("unknown"),
   /** Causal distance from the origin of the trace. */
   order: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
-  state: z.enum(["active", "latent", "broken", "contested"]).optional(),
-  illustrative: z.boolean().optional(),
-  /** Alternative readings that would also explain the observation. */
+  state: z.enum(["active", "latent", "broken", "contested"]).default("active"),
+  evidenceIds: z.array(z.string()).optional(),
+  claimClass: claimClassSchema.default("illustrative-scenario"),
+  /** Readings that would also explain the observation. Never omitted to look decisive. */
   alternatives: z.array(z.string()).optional(),
 });
 
 export type CausalRelation = z.infer<typeof causalRelationSchema>;
 
-export const evidenceStatusSchema = z.enum(["verified", "needs-verification", "illustrative"]);
+/* --------------------------------------------------------------------------
+   EVIDENCE
+   -------------------------------------------------------------------------- */
 
+export const evidenceStatusSchema = z.enum(["verified", "needs-verification"]);
 export type EvidenceStatus = z.infer<typeof evidenceStatusSchema>;
 
 export const evidenceCategorySchema = z.enum([
-  "geopolitics",
-  "supply-chains",
+  "fragmentation",
+  "critical-minerals",
+  "semiconductors",
+  "structural-breaks",
   "energy",
   "insurance",
-  "markets",
   "ai-forecasting",
-  "structural-breaks",
-  "critical-minerals",
 ]);
 
 export type EvidenceCategory = z.infer<typeof evidenceCategorySchema>;
 
+export const EVIDENCE_CATEGORY_LABEL: Record<EvidenceCategory, string> = {
+  fragmentation: "Fragmentation",
+  "critical-minerals": "Critical minerals",
+  semiconductors: "Semiconductors",
+  "structural-breaks": "Structural breaks",
+  energy: "Energy",
+  insurance: "Insurance",
+  "ai-forecasting": "AI forecasting",
+};
+
 export const evidenceRecordSchema = z.object({
   id: z.string().regex(/^E-\d{3}$/, "Evidence IDs are E-001 … E-999"),
   title: z.string().min(1),
-  organization: z.string().optional(),
+  organization: z.string().min(1),
   publication: z.string().optional(),
   date: z.string().optional(),
   url: z.string().url().optional(),
-  /** The single sentence this record is cited for. */
+  /** The single sentence this record is cited for, with the source's own units. */
   claim: z.string().min(1),
-  excerpt: z.string().optional(),
+  /** What the number does not say. Never omitted where a hedge exists. */
   context: z.string().optional(),
-  /** Why the claim matters causally — not merely that it is interesting. */
+  /** Why it matters causally — not merely that it is interesting. */
   causalRelevance: z.string().optional(),
+  /** How the figure was produced, where that changes how it should be read. */
+  methodology: z.string().optional(),
   categories: z.array(evidenceCategorySchema).min(1),
   status: evidenceStatusSchema,
   accessedAt: z.string().optional(),
@@ -109,25 +165,22 @@ export const evidenceRecordSchema = z.object({
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 
 /* --------------------------------------------------------------------------
-   Positioned graphs
+   POSITIONED GRAPHS
    --------------------------------------------------------------------------
    Diagram geometry is authored, not force-simulated: a causal argument reads in
-   a particular order and a physics layout would scramble it on every load.
-   Coordinates are normalised 0–1 and mapped onto the viewBox at render time.
-   ------------------------------------------------------------------------ */
+   a particular order, and a physics layout would scramble that order on every
+   load. Coordinates are normalised 0–1 and mapped onto the viewBox at render.
+   -------------------------------------------------------------------------- */
 
 export const positionSchema = z.object({
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),
 });
-
 export type Position = z.infer<typeof positionSchema>;
 
 export const positionedNodeSchema = causalNodeSchema.extend({
   position: positionSchema,
-  /** Horizontal label alignment when the default would collide or overflow. */
   anchor: z.enum(["start", "middle", "end"]).optional(),
-  /** Which side of the glyph the label sits on. Defaults to below. */
   labelSide: z.enum(["above", "below", "left", "right"]).optional(),
 });
 
@@ -137,58 +190,30 @@ export const causalGraphSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   scope: z.string().min(1),
-  /** Plain-language description read by screen readers in place of the diagram. */
+  /** Read by screen readers in place of the diagram. Required, never generated. */
   textAlternative: z.string().min(1),
   nodes: z.array(positionedNodeSchema).min(1),
   relations: z.array(causalRelationSchema),
-  /** True when the *structure* is explanatory rather than observed. */
-  illustrative: z.boolean(),
+  claimClass: claimClassSchema,
   evidenceIds: z.array(z.string()).optional(),
 });
 
 export type CausalGraph = z.infer<typeof causalGraphSchema>;
 
-/* --------------------------------------------------------------------------
-   Scenarios
-   ------------------------------------------------------------------------ */
+/** Parses and freezes a graph at module scope, so a malformed graph fails the build. */
+export function defineGraph(graph: z.input<typeof causalGraphSchema>): CausalGraph {
+  const parsed = causalGraphSchema.parse(graph);
 
-export const scenarioSchema = z.object({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  /** The role whose 3 a.m. question this is. */
-  role: z.string().min(1),
-  question: z.string().min(1),
-  /** What is assumed to be true today, and would have to break. */
-  assumption: z.string().min(1),
-  trace: z.array(
-    z.object({
-      order: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-      label: z.string(),
-      mechanism: z.string(),
-    }),
-  ),
-  evidenceIds: z.array(z.string()).optional(),
-  illustrative: z.literal(true),
-});
+  const ids = new Set(parsed.nodes.map((node) => node.id));
+  for (const relation of parsed.relations) {
+    for (const id of [...relation.sourceIds, ...relation.targetIds]) {
+      if (!ids.has(id)) {
+        throw new Error(
+          `Graph "${parsed.id}": relation "${relation.id}" references unknown node "${id}".`,
+        );
+      }
+    }
+  }
 
-export type Scenario = z.infer<typeof scenarioSchema>;
-
-/**
- * Branching futures.
- *
- * `probability` is deliberately absent from the authored data. The field exists on
- * the type so that calibrated model output can be attached later without a schema
- * migration — but until a model produces one, nothing here carries a number.
- */
-export const futureBranchSchema = z.object({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  summary: z.string().min(1),
-  drivers: z.array(z.string()).min(1),
-  assumptions: z.array(z.string()).min(1),
-  probability: z.number().min(0).max(1).optional(),
-  calibrationStatus: z.string().optional(),
-  illustrative: z.literal(true),
-});
-
-export type FutureBranch = z.infer<typeof futureBranchSchema>;
+  return parsed;
+}

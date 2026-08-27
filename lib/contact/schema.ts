@@ -1,45 +1,48 @@
 import { z } from "zod";
 
-/**
- * Collaboration enquiry.
- *
- * The field list is the whole field list. Nothing is collected that is not needed
- * to write a reply, and there is no hidden telemetry attached to a submission.
- */
+/* ============================================================================
+   CONTACT SCHEMA (§34)
+   ----------------------------------------------------------------------------
+   One schema, used by the client for immediate feedback and by the server as the
+   actual trust boundary. The client copy is a convenience; the server copy is
+   the one that decides.
+   ========================================================================== */
+
 export const contactSchema = z.object({
-  name: z.string().trim().min(2, "Please give a name.").max(120),
+  name: z.string().trim().min(1, "Please enter your name.").max(120, "That name is too long."),
   email: z
     .string()
     .trim()
-    .toLowerCase()
-    .email("That does not look like an email address.")
-    .max(200),
-  organization: z.string().trim().min(2, "Please give an organisation.").max(160),
-  role: z.string().trim().min(2, "Please give a role.").max(160),
-  message: z
+    .min(1, "Please enter an email address.")
+    .max(254, "That email address is too long.")
+    .email("That does not look like an email address."),
+  organization: z.string().trim().max(160, "That organisation name is too long.").optional(),
+  /** Which 3 a.m. problem they have. Free text — the list is a prompt, not a taxonomy. */
+  context: z
     .string()
     .trim()
-    .min(20, "A sentence or two about the decision or risk, please.")
-    .max(4000),
-  consent: z.literal(true, {
-    message: "Please confirm you are happy for us to reply.",
-  }),
+    .min(20, "A sentence or two of context, please — it makes the reply useful.")
+    .max(4000, "Please keep this under 4000 characters."),
   /**
-   * Honeypot. Real people never see this field and never fill it in; naive bots
-   * fill every input they find. A filled value is rejected silently, so a bot
-   * learns nothing from the response.
+   * Honeypot. Real users never see this field and never fill it. Bots fill
+   * everything. A filled honeypot is accepted with a success response and
+   * silently discarded — telling a bot it failed only teaches it to try again.
    */
-  website: z.string().max(0).optional().or(z.literal("")),
-  /**
-   * Milliseconds between the form mounting and being submitted. A submission
-   * faster than a human could type is treated as automated.
-   */
-  elapsedMs: z.number().int().nonnegative().optional(),
+  website: z.string().max(0).optional(),
 });
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
-export const MIN_HUMAN_ELAPSED_MS = 3000;
+export type ContactFieldErrors = Partial<Record<keyof ContactInput, string>>;
 
-export type ContactResponse =
-  { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+/** Flattens Zod issues into one message per field, for rendering next to inputs. */
+export function fieldErrors(error: z.ZodError<ContactInput>): ContactFieldErrors {
+  const errors: ContactFieldErrors = {};
+  for (const issue of error.issues) {
+    const key = issue.path[0];
+    if (typeof key === "string" && !(key in errors)) {
+      errors[key as keyof ContactInput] = issue.message;
+    }
+  }
+  return errors;
+}

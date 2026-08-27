@@ -1,99 +1,69 @@
-import { PageShell, Section } from "@/components/layout/PageShell";
+import { PageShell } from "@/components/layout/PageShell";
 import { Prose } from "@/components/layout/Prose";
-import { WebPageJsonLd } from "@/components/layout/JsonLd";
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 import { buildMetadata } from "@/lib/metadata/build-metadata";
 
 export const metadata = buildMetadata({
   title: "Terms",
-  description: "Terms of use for the Yukthi Lab website.",
+  description: "Terms of use, and what the content on this site is and is not.",
   path: "/terms",
 });
 
-const UPDATED = "2026-08-25";
-
 export default function TermsPage() {
   return (
-    <>
-      <WebPageJsonLd
-        name="Terms"
-        description="Terms of use for the Yukthi Lab website."
-        path="/terms"
-      />
-      <PageShell
-        eyebrow="Legal · terms"
-        title="Terms of use."
-        lede="What this site is, what it is not, and the basis on which it is published."
-        aside={<InstrumentLabel>Last updated {UPDATED}</InstrumentLabel>}
-      >
-        <Section>
-          <Prose>
-            <h2>Nature of this site</h2>
-            <p>
-              This website publishes research positions, an evidence record and a description of
-              a system under development. It is provided for information. It is not an offer, a
-              solicitation, or a contract, and access to it creates no relationship between you
-              and Yukthi Lab.
-            </p>
+    <PageShell
+      eyebrow="Terms"
+      title="Terms of use."
+      lede={
+        <>
+          Mostly a statement about what the content here is, and what it must not be taken for.
+        </>
+      }
+    >
+      <Prose>
+        <h2>The content is not advice</h2>
+        <p>
+          Nothing on this site is investment, financial, legal, procurement or operational
+          advice. The scenarios are explicitly labelled illustrative: they demonstrate the shape
+          of a causal analysis, and they are not findings about any organisation, market or
+          asset.
+        </p>
 
-            <h2>Not advice</h2>
-            <p>
-              Nothing here is investment, legal, insurance, procurement, engineering or policy
-              advice, and nothing here should be relied upon in making a consequential decision.
-              The causal structures shown are analytical models of how systems may propagate
-              effects; they are not predictions, and they are not a substitute for your own
-              judgement or your own professional advisers.
-            </p>
+        <h2>No model output</h2>
+        <p>
+          No content on this site is the output of a running Yukthi system. Every scenario,
+          trace and diagram is authored to explain a mechanism. Where something describes what
+          Yukthi intends to build rather than what exists, it is marked{" "}
+          <strong>Product ambition</strong>.
+        </p>
 
-            <h2>Illustrative material</h2>
-            <p>
-              Diagrams marked <strong>illustrative</strong> are drawn to explain a mechanism.
-              They are not output from a fitted model, they do not carry calibrated
-              probabilities, and they must not be read as forecasts. Every such diagram is
-              labelled where it appears.
-            </p>
+        <h2>Evidence and third-party sources</h2>
+        <p>
+          Evidence records quote and characterise documents published by other organisations.
+          Those documents remain the property of their publishers, are linked rather than
+          reproduced, and are quoted with their own stated limits attached. Any characterisation
+          is Yukthi&rsquo;s; any error in one is Yukthi&rsquo;s too, and corrections are welcome
+          via the contact page.
+        </p>
+        <p>
+          Records marked <strong>unverified</strong> have not been checked against the primary
+          document and should not be relied on until they have been.
+        </p>
 
-            <h2>Evidence and sources</h2>
-            <p>
-              Each factual claim on this site carries a source record with a verification
-              status. Records marked <strong>needs verification</strong> have not yet been
-              checked against the primary document and should be treated as provisional. Where a
-              claim quotes or paraphrases a third party, the underlying work belongs to its
-              author and is referenced for study and comment.
-            </p>
+        <h2>Accuracy and change</h2>
+        <p>
+          The evidence base reflects sources as accessed on the dates recorded against each
+          record. Sources are revised, and figures quoted here may be superseded. Each record
+          carries the date it was last checked so a reader can judge staleness rather than
+          assume currency.
+        </p>
 
-            <h2>Intellectual property</h2>
-            <p>
-              The text, diagrams, visual system and source code of this site are the property of
-              Yukthi Lab except where a third party is credited. You may quote from this site
-              with attribution and a link. You may not present it as your own, or reproduce it
-              wholesale as a competing publication.
-            </p>
-
-            <h2>External links</h2>
-            <p>
-              Links to external sources are provided so claims can be checked at their origin.
-              Yukthi Lab does not control those sites and is not responsible for their content
-              or availability. Outbound links open in a new context and carry{" "}
-              <code>rel=&quot;noopener noreferrer&quot;</code>.
-            </p>
-
-            <h2>Availability</h2>
-            <p>
-              The site is published as-is and as-available. It may change, move or be taken
-              offline without notice. To the fullest extent permitted by law, no warranty is
-              given and no liability is accepted for loss arising from use of, or reliance on,
-              this site.
-            </p>
-
-            <h2>Contact</h2>
-            <p>
-              Questions about these terms can be raised through the collaboration channel on the{" "}
-              <a href="/about">About</a> page.
-            </p>
-          </Prose>
-        </Section>
-      </PageShell>
-    </>
+        <h2>Liability</h2>
+        <p>
+          This site is provided as is. Yukthi Lab accepts no liability for decisions taken on
+          the basis of the material here, which is published to explain an argument rather than
+          to support a decision.
+        </p>
+      </Prose>
+    </PageShell>
   );
 }

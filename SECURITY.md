@@ -2,67 +2,59 @@
 
 ## Reporting
 
-If you find a vulnerability in this site, please report it through the
-collaboration channel on `/about` rather than opening a public issue. Include
-the affected route, what you observed, and how to reproduce it.
+Report a vulnerability through the contact form at `/contact`, or to the address
+in `lib/metadata/site.ts`. Please include reproduction steps. You will get an
+acknowledgement; please allow reasonable time before public disclosure.
 
 ## What this application is
 
-A static content site. It has no accounts, no sessions, no database, and no
-user-generated content. The only endpoint that accepts input is
-`POST /api/contact`.
+A content site with one write endpoint (`POST /api/contact`). No user accounts,
+no sessions, no database, no cookies, no local storage, no third-party scripts,
+and no secrets in the client bundle.
 
-## Controls in place
+## Controls
 
-| Area                   | Control                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| Transport              | HSTS with a two-year max-age and `upgrade-insecure-requests` in the CSP                                |
-| Framing                | `frame-ancestors 'none'` and `X-Frame-Options: DENY`                                                   |
-| MIME sniffing          | `X-Content-Type-Options: nosniff`                                                                      |
-| Referrer               | `strict-origin-when-cross-origin`                                                                      |
-| Browser features       | `Permissions-Policy` denies camera, microphone, geolocation, payment, USB, sensors, topics and cohorts |
-| Cross-origin isolation | `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`                 |
-| Script execution       | `script-src 'self' 'unsafe-inline'`; no `unsafe-eval` in production                                    |
-| Plugins and framing    | `object-src 'none'`, `frame-src 'none'`                                                                |
-| Base tag injection     | `base-uri 'self'`                                                                                      |
-| Form exfiltration      | `form-action 'self'`                                                                                   |
-| Remote resources       | No remote script, style, font or image origin unless an analytics provider is configured               |
-| Input validation       | Zod schema on the server; the client cannot bypass it                                                  |
-| Abuse                  | Fixed-window rate limit per IP, honeypot field, and a minimum submission time                          |
-| CSRF                   | JSON-only content type, same-origin check, no cookies or session to ride on                            |
-| Secrets                | Server-only variables are never `NEXT_PUBLIC_`; `.env.example` holds no values                         |
-| External links         | Every outbound link carries `rel="noopener noreferrer"`                                                |
+| Control                                                            | Where                         | Verified by      |
+| ------------------------------------------------------------------ | ----------------------------- | ---------------- |
+| Content Security Policy                                            | `lib/security/headers.ts`     | unit + e2e       |
+| `X-Frame-Options: DENY`, `nosniff`, HSTS, Permissions-Policy, COOP | same                          | unit + e2e       |
+| Server-side input validation                                       | `lib/contact/schema.ts` (Zod) | unit + e2e       |
+| Rate limiting                                                      | `lib/security/rate-limit.ts`  | unit + e2e       |
+| Honeypot                                                           | contact form and route        | unit + component |
 
-## Known limitation: `script-src 'unsafe-inline'`
+### Content Security Policy
 
-Next.js 16 serves a prerendered HTML shell for every route in this application,
-dynamic routes included. A per-request nonce cannot reach a document rendered
-before the request existed, and a nonce baked in at build time is a constant —
-no stronger than `unsafe-inline`, while appearing considerably stronger.
+`connect-src 'self'` — no third-party network connections. Analytics cannot be
+added without an explicit, reviewable change to that line.
 
-Rather than ship that, the policy permits inline scripts explicitly and says so.
-What limits the exposure is that this site renders no user-supplied content
-anywhere: no comments, no search echo, no query parameters written into the DOM,
-no third-party embeds. There is no ordinary path by which attacker-controlled
-markup enters a page.
+`'unsafe-inline'` is allowed for styles: Next injects critical CSS inline and
+React Three Fiber sets inline styles on elements. `'unsafe-eval'` is permitted in
+development only, for React Refresh; a unit test fails if it reaches the
+production policy.
 
-If a future Next.js version applies request nonces to the served shell, restore
-`'nonce-…' 'strict-dynamic'` in `lib/security/headers.ts` and drop
-`'unsafe-inline'`. Everything else in the policy stays as it is.
+### The contact endpoint
 
-## Known limitation: in-memory rate limiting
+- Validated server-side with the same schema the client uses. The server copy is
+  the trust boundary; the client copy is a convenience.
+- Rate limited per IP, with `Retry-After` on rejection.
+- A filled honeypot is accepted with a success response and discarded. Telling a
+  bot it failed only teaches it to retry.
+- No user input is reflected in any response.
+- JSON parse failures return 400, never a 5xx.
 
-`lib/security/rate-limit.ts` keeps its counters in process memory. On a single
-Node instance that is a real control. Across several instances or a serverless
-fleet, each instance keeps its own counter, so the effective limit is the
-configured limit multiplied by the number of live instances.
+## Known limitations
 
-For a contact form that is an acceptable first line. A deployment that needs a
-hard guarantee should back `hit()` with Redis or the platform's own rate
-limiter; the call site does not change.
+Both are deliberate, and both are documented in `docs/DEPLOYMENT.md` rather than
+papered over:
 
-## Dependency hygiene
+1. **The rate limiter is in-process.** On multi-instance or serverless hosting it
+   becomes per-instance, so the effective limit multiplies by instance count.
+   Replace with a shared store if this endpoint ever carries more value.
 
-Run `npm audit` before each release. Dependencies are deliberately few: Next,
-React, Tailwind, Zod, Motion, Three.js and MDX. No analytics SDK, no UI kit, no
-component library, no chat widget.
+2. **The IP is read from `x-forwarded-for`.** Spoofable by a determined caller,
+   which is why the limiter is one layer rather than the only one.
+
+## Dependencies
+
+`npm audit` reports zero vulnerabilities at the pinned versions. Run it before
+each release.

@@ -2,10 +2,10 @@
   "name": "yukthi-lab",
   "version": "1.0.0",
   "private": true,
+  "description": "Yukthi Lab — a Scoped Causal Hypergraph-based World Model. Bring certainty to an increasingly unstable world.",
   "engines": {
     "node": "22.x"
   },
-  "description": "Yukthi Lab \u2014 a Scoped Causal Hypergraph-based World Model for consequential decisions.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,13 +16,17 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@mdx-js/loader": "^3.1.0",
-    "@mdx-js/react": "^3.1.0",
-    "@next/mdx": "^16.3.0",
+    "@gsap/react": "^2.1.2",
+    "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0",
+    "gsap": "^3.15.0",
+    "motion": "^12.23.12",
     "next": "16.3.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -37,7 +41,8 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.6",
-    "@types/mdx": "^2.0.13",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-shape": "^3.1.7",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",

@@ -1,133 +1,212 @@
+import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
 
-import { ConsentProvider } from "@/components/consent/ConsentProvider";
-import { CookieBanner } from "@/components/consent/CookieBanner";
-import { EvidenceCard } from "@/components/evidence/EvidenceCard";
-import { EvidenceMarker } from "@/components/evidence/EvidenceMarker";
-import { ScenarioSelector } from "@/components/scenario/ScenarioSelector";
-import { getEvidence } from "@/data/evidence";
+import { ScopeLens } from "@/components/scope/ScopeLens";
+import { WhatBreaksNext } from "@/components/demo/WhatBreaksNext";
+import { EvidenceInspector } from "@/components/evidence/EvidenceInspector";
+import { CausalDiagram } from "@/components/hypergraph/CausalDiagram";
+import { ContactForm } from "@/components/contact/ContactForm";
+import { signatureGraphs } from "@/data/graphs";
 
-/**
- * Behaviour tests written from the reader's point of view: what is announced,
- * what can be reached by keyboard, and what a dialog does with focus.
- */
-describe("evidence marker", () => {
-  it("names its source in its accessible label", () => {
-    render(<EvidenceMarker id="E-001" />);
-    const marker = screen.getByRole("button");
-    expect(marker).toHaveAccessibleName(/E-001/);
-    expect(marker).toHaveAccessibleName(/International Monetary Fund/);
-  });
+/* These cover the interactive components. A regression in any of them silently
+   removes the argument from a keyboard or screen reader user. */
 
-  it("renders nothing for an unknown record rather than an empty citation", () => {
-    const { container } = render(<EvidenceMarker id="E-404" />);
-    expect(container).toBeEmptyDOMElement();
-  });
+describe("ScopeLens", () => {
+  it("is a tablist with exactly one selected tab", () => {
+    render(<ScopeLens />);
 
-  it("opens a modal dialog with the full record, and closes on Escape", async () => {
-    const user = userEvent.setup();
-    render(<EvidenceMarker id="E-004" />);
-
-    await user.click(screen.getByRole("button"));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(within(dialog).getAllByText(/Export licensing/i).length).toBeGreaterThan(0);
-    expect(within(dialog).getByText("Verified")).toBeInTheDocument();
-
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-});
-
-describe("evidence card", () => {
-  it("shows verification status and the source, and never fabricates a link", () => {
-    const record = getEvidence("E-009")!;
-    render(<EvidenceCard record={record} />);
-
-    expect(screen.getByText("Needs verification")).toBeInTheDocument();
-    expect(screen.getByText("European Central Bank")).toBeInTheDocument();
-    // E-009 has no URL, so the card must say so rather than render a dead link.
-    expect(screen.getByText(/No stable link recorded/i)).toBeInTheDocument();
-  });
-
-  it("marks an external source link as safe and shows where it goes", () => {
-    render(<EvidenceCard record={getEvidence("E-001")!} />);
-    const link = screen.getByRole("link", { name: /Open source/i });
-    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
-    expect(link).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAccessibleName(/imf\.org/);
-  });
-});
-
-describe("scenario selector", () => {
-  it("exposes decision scopes as a tablist with one selected tab", () => {
-    render(<ScenarioSelector />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.length).toBe(6);
-    expect(tabs.filter((tab) => tab.getAttribute("aria-selected") === "true")).toHaveLength(1);
+    expect(tabs.filter((tab) => tab.getAttribute("aria-selected") === "true").length).toBe(1);
   });
 
   it("moves between scopes with the arrow keys", async () => {
     const user = userEvent.setup();
-    render(<ScenarioSelector />);
+    render(<ScopeLens />);
 
-    const industry = screen.getByRole("tab", { name: /industry/i });
-    industry.focus();
-    await user.keyboard("{ArrowDown}");
+    const tabs = screen.getAllByRole("tab");
+    tabs[0]!.focus();
+    await user.keyboard("{ArrowRight}");
 
-    expect(screen.getByRole("tab", { name: /energy/i })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByRole("tabpanel")).toHaveTextContent(/grid operator|energy trader/i);
+    expect(tabs[1]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[0]).toHaveAttribute("aria-selected", "false");
   });
 
-  it("labels every trace as illustrative", () => {
-    render(<ScenarioSelector />);
-    expect(screen.getByText(/Illustrative causal trace/i)).toBeInTheDocument();
+  it("wraps around at the ends", async () => {
+    const user = userEvent.setup();
+    render(<ScopeLens />);
+
+    const tabs = screen.getAllByRole("tab");
+    tabs[0]!.focus();
+    await user.keyboard("{ArrowLeft}");
+
+    expect(tabs[tabs.length - 1]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("changes the panel content when the scope changes", async () => {
+    const user = userEvent.setup();
+    render(<ScopeLens />);
+
+    const panel = screen.getByRole("tabpanel");
+    const before = panel.textContent;
+
+    await user.click(screen.getByRole("tab", { name: /energy/i }));
+
+    expect(screen.getByRole("tabpanel").textContent).not.toBe(before);
+  });
+
+  it("keeps every tab reachable but only one in the tab order", () => {
+    render(<ScopeLens />);
+    const tabs = screen.getAllByRole("tab");
+    const tabbable = tabs.filter((tab) => tab.getAttribute("tabindex") === "0");
+    expect(tabbable.length).toBe(1);
   });
 });
 
-describe("cookie banner", () => {
-  it("offers reject, accept-all and per-category choice at equal prominence", async () => {
-    window.localStorage.clear();
-    render(
-      <ConsentProvider>
-        <CookieBanner />
-      </ConsentProvider>,
-    );
-
-    const region = await screen.findByRole("region", { name: /cookie consent/i });
-    const reject = within(region).getByRole("button", { name: /reject optional/i });
-    const acceptAll = within(region).getByRole("button", { name: /accept all/i });
-    const choose = within(region).getByRole("button", { name: /choose categories/i });
-
-    // No dark pattern: the three actions share one class list, so none is louder.
-    expect(reject.className).toBe(acceptAll.className);
-    expect(choose.className).toBe(acceptAll.className);
+describe("WhatBreaksNext", () => {
+  it("labels itself as illustrative, not model output", () => {
+    render(<WhatBreaksNext />);
+    expect(screen.getByText(/illustrative scenario/i)).toBeInTheDocument();
+    expect(screen.getByText(/not live model output/i)).toBeInTheDocument();
   });
 
-  it("stores only the necessary category when optional is rejected", async () => {
-    window.localStorage.clear();
+  it("shows the full propagation structure the brief specifies", () => {
+    render(<WhatBreaksNext />);
+
+    for (const heading of [
+      /what changed/i,
+      /where it propagates/i,
+      /affected systems/i,
+      /second-order effects/i,
+      /third-order effects/i,
+      /what to monitor/i,
+      /possible intervention points/i,
+    ]) {
+      expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    }
+  });
+
+  it("swaps scenarios and reports the selected one", async () => {
     const user = userEvent.setup();
-    render(
-      <ConsentProvider>
-        <CookieBanner />
-      </ConsentProvider>,
+    render(<WhatBreaksNext />);
+
+    const target = screen.getByRole("button", { name: /extreme-weather grid event/i });
+    await user.click(target);
+
+    expect(target).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/extreme cold event/i)).toBeInTheDocument();
+  });
+
+  it("never renders a probability", () => {
+    const { container } = render(<WhatBreaksNext />);
+    expect(container.textContent).not.toMatch(/\b\d{1,3}%\s*(chance|probability|likely)/i);
+  });
+});
+
+describe("EvidenceInspector", () => {
+  it("renders a button per source, naming the record for a screen reader", () => {
+    render(<EvidenceInspector ids={["E-001", "E-005"]} />);
+
+    const first = screen.getByRole("button", { name: /E-001/ });
+    expect(first).toBeInTheDocument();
+    expect(first).toHaveAccessibleName(/International Monetary Fund/i);
+  });
+
+  it("opens a labelled dialog with the source detail", async () => {
+    const user = userEvent.setup();
+    render(<EvidenceInspector ids={["E-001"]} />);
+
+    await user.click(screen.getByRole("button", { name: /E-001/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(/supported claim/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/what this does not say/i)).toBeInTheDocument();
+  });
+
+  it("announces an unverified record as unverified", () => {
+    render(<EvidenceInspector ids={["E-011"]} />);
+    expect(screen.getByRole("button", { name: /E-011/ })).toHaveAccessibleName(
+      /not yet verified/i,
     );
+  });
 
-    await user.click(await screen.findByRole("button", { name: /reject optional/i }));
+  it("renders nothing for ids that do not resolve", () => {
+    const { container } = render(<EvidenceInspector ids={["E-999"]} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
 
-    const stored = JSON.parse(window.localStorage.getItem("yukthi.consent.v1")!);
-    expect(stored.state).toEqual({
-      necessary: true,
-      analytics: false,
-      functional: false,
-      marketing: false,
-    });
-    expect(screen.queryByRole("region", { name: /cookie consent/i })).not.toBeInTheDocument();
+describe("CausalDiagram", () => {
+  it("exposes the graph's text alternative to assistive technology", () => {
+    render(<CausalDiagram graph={signatureGraphs.uriFeedback} />);
+
+    const figure = screen.getByRole("group", { name: /winter storm uri/i });
+    expect(figure).toHaveAccessibleDescription(/reinforcing loop/i);
+  });
+
+  it("makes every node a focusable control", () => {
+    render(<CausalDiagram graph={signatureGraphs.uriFeedback} />);
+
+    // Scoped to the diagram itself: the evidence buttons in the caption beside
+    // it are also role=button, and are not diagram nodes.
+    const diagram = screen.getByRole("group", { name: /winter storm uri/i });
+    const nodes = within(diagram).getAllByRole("button");
+
+    expect(nodes.length).toBe(signatureGraphs.uriFeedback.nodes.length);
+    for (const node of nodes) expect(node).toHaveAttribute("tabindex", "0");
+  });
+
+  it("reveals a mechanism when a node is selected by keyboard", async () => {
+    const user = userEvent.setup();
+    render(<CausalDiagram graph={signatureGraphs.uriFeedback} />);
+
+    const node = screen.getByRole("button", { name: /extreme cold/i });
+    node.focus();
+    await user.keyboard("{Enter}");
+
+    expect(node).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/freezes/i)).toBeInTheDocument();
+  });
+});
+
+describe("ContactForm", () => {
+  it("gives every visible field a real label", () => {
+    render(<ContactForm />);
+
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/3 a\.m\. problem/i)).toBeInTheDocument();
+  });
+
+  it("reports validation errors against the offending field", async () => {
+    const user = userEvent.setup();
+    render(<ContactForm />);
+
+    await user.type(screen.getByLabelText(/name/i), "A Reader");
+    await user.type(screen.getByLabelText(/email/i), "nonsense");
+    await user.type(screen.getByLabelText(/3 a\.m\. problem/i), "Too short");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    const email = screen.getByLabelText(/email/i);
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription(/does not look like an email/i);
+  });
+
+  it("moves focus to the first field with an error", async () => {
+    const user = userEvent.setup();
+    render(<ContactForm />);
+
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    expect(screen.getByLabelText(/name/i)).toHaveFocus();
+  });
+
+  it("keeps the honeypot out of the tab order and the accessibility tree", () => {
+    render(<ContactForm />);
+
+    const honeypot = document.querySelector('input[name="website"]');
+    expect(honeypot).toHaveAttribute("tabindex", "-1");
+    expect(honeypot?.closest("[aria-hidden='true']")).not.toBeNull();
   });
 });

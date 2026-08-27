@@ -1,137 +1,84 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const ROUTES = [
-  "/",
-  "/thesis",
-  "/architecture",
-  "/evidence",
-  "/research",
-  "/field-notes",
-  "/about",
-  "/privacy",
-];
-
-test.beforeEach(async ({ context }) => {
-  await context.addInitScript(() => {
-    window.localStorage.setItem(
-      "yukthi.consent.v1",
-      JSON.stringify({
-        version: 1,
-        decidedAt: "2026-08-25T00:00:00.000Z",
-        state: { necessary: true, analytics: false, functional: false, marketing: false },
-      }),
-    );
-  });
-});
+const ROUTES = ["/", "/thesis", "/technology", "/evidence", "/research", "/contact"];
 
 test.describe("accessibility", () => {
   for (const route of ROUTES) {
-    test(`${route} has no WCAG 2.1 A/AA violations`, async ({ page }) => {
+    test(`${route} has no detectable WCAG A/AA violations`, async ({ page }) => {
       await page.goto(route);
-      await page.waitForTimeout(700);
 
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();
 
       expect(
-        results.violations.map((violation) => `${violation.id}: ${violation.help}`),
+        results.violations.map((violation) => ({
+          id: violation.id,
+          nodes: violation.nodes.map((node) => node.target).slice(0, 3),
+        })),
       ).toEqual([]);
     });
   }
 
-  test("the causal inspector dialog is accessible when open", async ({ page }) => {
+  test("the skip link is the first thing a keyboard reaches", async ({ page }) => {
     await page.goto("/");
-    await page.locator("#rare-earth").scrollIntoViewIfNeeded();
-    await page
-      .getByRole("button", { name: /Refining concentration/i })
-      .first()
-      .click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Tab");
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    expect(results.violations.map((violation) => violation.id)).toEqual([]);
+    const focused = page.locator(":focus");
+    await expect(focused).toHaveText(/skip to content/i);
+    await expect(focused).toBeVisible();
   });
 
-  test("a causal graph can be operated entirely from the keyboard", async ({ page }) => {
+  test("the chapter rail is keyboard navigable", async ({ page }, testInfo) => {
     await page.goto("/");
-    const section = page.locator("#rare-earth");
-    await section.scrollIntoViewIfNeeded();
 
-    await section
-      .getByRole("button", { name: /Refining concentration/i })
-      .first()
-      .focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toBeVisible();
-  });
+    const links = page.locator('nav[aria-label="Chapters"] a');
+    await expect(links).toHaveCount(11);
 
-  test("heading order is coherent on the thesis", async ({ page }) => {
-    await page.goto("/thesis");
-    const levels = await page.$$eval("h1, h2, h3, h4", (elements) =>
-      elements.map((element) => Number(element.tagName.slice(1))),
-    );
+    // The rail is a desktop affordance — below `lg` it is hidden and the same
+    // navigation is served by the header menu, so its accessible names are only
+    // meaningful where it is actually rendered.
+    test.skip(testInfo.project.name === "mobile", "rail is hidden below lg");
 
-    expect(levels[0]).toBe(1);
-    for (let index = 1; index < levels.length; index += 1) {
-      expect(levels[index]! - levels[index - 1]!, `jump at index ${index}`).toBeLessThanOrEqual(
-        1,
-      );
+    for (let i = 0; i < 11; i += 1) {
+      await expect(links.nth(i)).toHaveAccessibleName(/chapter \d+/i);
     }
   });
 
-  test("content survives 200% zoom without a horizontal scrollbar", async ({ page }) => {
-    await page.setViewportSize({ width: 640, height: 800 });
-    await page.goto("/thesis");
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = "32px";
-    });
-    await page.waitForTimeout(500);
+  test("the evidence drawer traps and returns focus correctly", async ({ page }) => {
+    await page.goto("/evidence");
 
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
+    await page
+      .getByRole("button", { name: /full record/i })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
   });
 });
 
 test.describe("reduced motion", () => {
-  test("the argument is fully readable with motion reduced", async ({ page }) => {
-    test.skip(
-      test.info().project.name !== "reduced-motion",
-      "covered by the reduced-motion project",
-    );
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
 
+  test("delivers the complete argument without pinning", async ({ page }) => {
     await page.goto("/");
-    for (const act of ["stable-world", "rare-earth", "the-bet", "ambition"]) {
-      const section = page.locator(`#${act}`);
-      await section.scrollIntoViewIfNeeded();
-      await expect(section).toBeVisible();
-    }
 
-    // Nothing is left at zero opacity waiting for an animation that will not run.
-    const hidden = await page.$$eval(
-      "#rare-earth svg g",
-      (groups) =>
-        groups.filter((group) => Number(getComputedStyle(group).opacity) === 0).length,
-    );
-    expect(hidden).toBe(0);
+    // Every stage of the operating loop is present at once rather than revealed.
+    const loop = page.locator("#operating-loop");
+    const text = await loop.innerText();
+
+    for (const stage of ["Map", "Monitor", "Forecast", "Simulate", "Re-map"]) {
+      expect(text).toContain(stage);
+    }
   });
 
-  test("no WebGL canvas is created when motion is reduced", async ({ page }) => {
-    test.skip(
-      test.info().project.name !== "reduced-motion",
-      "covered by the reduced-motion project",
-    );
-
+  test("still reaches the finale", async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
-    expect(await page.locator("canvas").count()).toBe(0);
-    // The static field still renders, so the act is never empty.
-    await expect(page.locator("#invocation svg").first()).toBeAttached();
+    await page.locator("#finale").scrollIntoViewIfNeeded();
+    await expect(page.getByRole("heading", { name: /civilizations/i })).toBeVisible();
   });
 });

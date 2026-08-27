@@ -1,126 +1,151 @@
-import { ArchitectureFlow } from "@/components/architecture/ArchitectureFlow";
-import { PageShell, Section } from "@/components/layout/PageShell";
+import { PageShell } from "@/components/layout/PageShell";
+import { Prose } from "@/components/layout/Prose";
 import { WebPageJsonLd } from "@/components/layout/JsonLd";
 import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 import { ActionLink } from "@/components/ui/ActionLink";
-import { Hairline } from "@/components/ui/Hairline";
 import { buildMetadata } from "@/lib/metadata/build-metadata";
-import { researchEntries } from "@/content/research/registry";
+
+const DESCRIPTION =
+  "The open problems Yukthi has to solve, the four proof questions it expects to be held to, and the failure modes it is most worried about.";
 
 export const metadata = buildMetadata({
   title: "Research",
-  description:
-    "Technical notes, experiments, evaluations and benchmarks from Yukthi Lab. Nothing is published here that has not been produced.",
+  description: DESCRIPTION,
   path: "/research",
 });
 
-const PLANNED = [
+const OPEN_PROBLEMS = [
   {
-    index: "01",
-    title: "Causal structure induction from source documents",
-    detail:
-      "Whether a mechanism can be distinguished from a correlation that has held so far, using published material as the only input. The central open problem in layer 04.",
+    title: "Causal discovery from unstructured evidence",
+    problem:
+      "Extracting entities and relations from documents is tractable. Determining that a relation is causal rather than merely reported is not.",
+    approach:
+      "Treat extraction and causal commitment as separate steps with separate evidence requirements, and keep alternative readings attached to the relation rather than discarding them at extraction time.",
+    risk: "The failure mode is a confident graph full of associations wearing the label 'mechanism'.",
   },
   {
-    index: "02",
+    title: "Scope selection",
+    problem:
+      "A scope that is too narrow misses the pathway that matters. A scope that is too wide is intractable and produces answers nobody can audit.",
+    approach:
+      "Expand scope until the answer stops changing, then stop — and record where the boundary was drawn so the omission is visible rather than silent.",
+    risk: "Boundaries are where surprises live. A scope justified after the fact is not a method.",
+  },
+  {
     title: "Calibration under structural change",
-    detail:
-      "Base rates drawn from a previous regime are the wrong prior for the transition out of it. What replaces them, and how the replacement is scored.",
+    problem:
+      "Calibration is measured against resolved outcomes, which means it is measured against the past — the exact regime whose persistence is in question.",
+    approach:
+      "Score calibration separately within stable periods and across known breaks, and treat degradation across breaks as the metric that matters.",
+    risk: "A system that is well-calibrated in stable periods and no better than incumbents at breaks has not solved the problem it exists for.",
   },
   {
-    index: "03",
-    title: "Trace explosion beyond three causal steps",
-    detail:
-      "The number of admissible paths grows faster than any of them can be justified. Which pruning rules preserve the consequential paths.",
+    title: "Structural revision without thrash",
+    problem:
+      "Re-map is the distinguishing step, and it is also the dangerous one: a model that revises its structure on every contradicting observation is noise-fitting at a higher level of abstraction.",
+    approach:
+      "Require evidence to be persistent and mechanism-bearing before structure changes, and version the graph so revisions can be reviewed and reversed.",
+    risk: "Both directions fail. Too rigid and it is an extrapolative model with extra steps; too fluid and it has no memory.",
   },
   {
-    index: "04",
-    title: "Detecting a broken edge before an outcome moves",
-    detail:
-      "A relation can break while every node it connects still looks unchanged. What observable fires, and at what false-positive rate.",
+    title: "Evaluation against incumbents",
+    problem:
+      "The honest comparison is not against a naive baseline but against what a well-resourced team already does — which is usually good.",
+    approach:
+      "Evaluate on decisions where the incumbent process is documented and its output is recorded at the time, so hindsight cannot leak into the comparison.",
+    risk: "Retrospective evaluation is where causal systems most easily fool themselves and their builders.",
   },
 ];
 
 export default function ResearchPage() {
-  const hasEntries = researchEntries.length > 0;
-
   return (
     <>
-      <WebPageJsonLd
-        name="Research"
-        description="Research output from Yukthi Lab."
-        path="/research"
-      />
+      <WebPageJsonLd name="Research" description={DESCRIPTION} path="/research" />
+
       <PageShell
-        eyebrow="00 / research"
-        title="Research in progress."
-        lede="This page lists technical notes, experiments, evaluations and benchmark results. It is empty because none have been produced yet — not because none are planned."
+        eyebrow="Research"
+        title="What Yukthi has to prove."
+        lede={
+          <>
+            These are the open problems, stated as problems. A page of solved challenges would
+            be less useful and less true.
+          </>
+        }
       >
-        {hasEntries ? (
-          <Section index="01 / output" title="Published">
-            <ol>
-              {researchEntries.map((entry) => (
-                <li key={entry.slug}>
-                  <Hairline />
-                  <div className="py-8">
-                    <InstrumentLabel tone="gold">{entry.kind}</InstrumentLabel>
-                    <h3 className="u-display-3 mt-3 text-bone">{entry.title}</h3>
-                    <p className="u-body mt-3 max-w-2xl">{entry.summary}</p>
-                  </div>
+        <div className="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-24">
+          <div>
+            <InstrumentLabel as="h2" tone="gold">
+              Open problems
+            </InstrumentLabel>
+
+            <ol className="mt-10 space-y-16">
+              {OPEN_PROBLEMS.map((item, index) => (
+                <li key={item.title}>
+                  <article>
+                    <InstrumentLabel className="tabular-nums" tone="steel">
+                      {String(index + 1).padStart(2, "0")}
+                    </InstrumentLabel>
+                    <h3 className="u-display-3 mt-4 text-bone">{item.title}</h3>
+
+                    <dl className="mt-6 space-y-5">
+                      <div>
+                        <dt className="u-instrument">The problem</dt>
+                        <dd className="u-body mt-2">{item.problem}</dd>
+                      </div>
+                      <div>
+                        <dt className="u-instrument">Current approach</dt>
+                        <dd className="u-body mt-2">{item.approach}</dd>
+                      </div>
+                      <div>
+                        <dt className="u-instrument text-rupture">The failure mode</dt>
+                        <dd className="u-body mt-2">{item.risk}</dd>
+                      </div>
+                    </dl>
+                  </article>
                 </li>
               ))}
             </ol>
-          </Section>
-        ) : (
-          <Section index="01 / status" title="Nothing published yet">
-            <div className="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-24">
-              <div>
-                <p className="u-lede u-measure">
-                  A research page with nothing on it is more informative than a research page
-                  with placeholder papers on it. When there is a result, it will appear here
-                  with the method that produced it, the data it was run on, and the conditions
-                  under which it would not replicate.
-                </p>
+          </div>
 
-                <div className="mt-16">
-                  <InstrumentLabel as="h3" tone="gold">
-                    The questions being worked on
-                  </InstrumentLabel>
-                  <ol className="mt-8">
-                    {PLANNED.map((item) => (
-                      <li key={item.index}>
-                        <Hairline />
-                        <div className="flex gap-6 py-6">
-                          <span className="font-mono text-[0.625rem] text-dim-bone tabular-nums">
-                            {item.index}
-                          </span>
-                          <span>
-                            <span className="block text-[0.9375rem] leading-snug text-bone">
-                              {item.title}
-                            </span>
-                            <span className="mt-2 block max-w-xl text-[0.875rem] leading-relaxed text-muted-bone">
-                              {item.detail}
-                            </span>
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                  <Hairline />
-                </div>
-
-                <div className="mt-12 flex flex-wrap gap-x-10 gap-y-4">
-                  <ActionLink href="/architecture">The open problems, by layer</ActionLink>
-                  <ActionLink href="/field-notes">Field notes</ActionLink>
-                </div>
-              </div>
-
-              <div className="border-l border-[color:var(--hairline)] pl-8 lg:pl-12">
-                <ArchitectureFlow />
-              </div>
+          <aside className="space-y-12">
+            <div className="border border-gold-dim p-8">
+              <InstrumentLabel as="h2" tone="gold">
+                The four proof questions
+              </InstrumentLabel>
+              <ol className="mt-8 space-y-6">
+                {[
+                  "Did the system identify consequential risks earlier?",
+                  "Were its probabilities better calibrated?",
+                  "Did it reveal causal pathways existing systems missed?",
+                  "Could the user intervene before the loss occurred?",
+                ].map((question, index) => (
+                  <li key={question} className="flex gap-4">
+                    <InstrumentLabel tone="gold" className="tabular-nums">
+                      {String(index + 1).padStart(2, "0")}
+                    </InstrumentLabel>
+                    <span className="font-display text-[1.125rem] leading-snug font-light text-bone">
+                      {question}
+                    </span>
+                  </li>
+                ))}
+              </ol>
             </div>
-          </Section>
-        )}
+
+            <div className="border-t border-[color:var(--hairline)] pt-8">
+              <Prose>
+                <h3>Collaboration</h3>
+                <p>
+                  Yukthi is interested in conversations with people who have the 3 a.m. problem
+                  and the data to test against it — particularly where an incumbent process is
+                  documented well enough to make an honest comparison possible.
+                </p>
+              </Prose>
+              <ActionLink href="/contact" tone="gold" className="mt-8">
+                Talk to Yukthi
+              </ActionLink>
+            </div>
+          </aside>
+        </div>
       </PageShell>
     </>
   );

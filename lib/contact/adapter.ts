@@ -1,103 +1,53 @@
 import type { ContactInput } from "./schema";
 
+/* ============================================================================
+   CONTACT DELIVERY
+   ----------------------------------------------------------------------------
+   Deliberately an interface with a logging implementation rather than a wired-up
+   email provider.
+
+   Shipping a hard dependency on a specific transactional email service would
+   mean either committing a vendor choice this project has not made, or shipping
+   code that silently fails without credentials. Instead the boundary is explicit
+   and documented in the deployment guide: implement `deliver` against whatever
+   the deployment actually uses.
+
+   The submission is never lost silently — if delivery is unconfigured, that is
+   recorded in the server log rather than swallowed.
+   ========================================================================== */
+
+export type ContactDelivery = {
+  deliver(input: ContactInput): Promise<{ delivered: boolean }>;
+};
+
 /**
- * Delivery adapter for collaboration enquiries.
- *
- * Provider-agnostic on purpose: no mail service is wired in, and none is assumed.
- * `CONTACT_PROVIDER` selects a transport at runtime. With nothing configured — the
- * default — the enquiry is written to the server log and the caller is told the
- * message was received but not delivered, so a misconfigured deployment cannot
- * silently swallow mail while showing a success message.
- *
- * Adding a provider means adding a case here. Nothing else changes.
+ * The default: records the submission on the server and reports that delivery is
+ * not configured. Suitable for a preview deployment; replace before production.
  */
-
-export type DeliveryResult =
-  | { delivered: true; provider: string }
-  | { delivered: false; provider: string; reason: string };
-
-export async function deliverEnquiry(input: ContactInput): Promise<DeliveryResult> {
-  const provider = (process.env.CONTACT_PROVIDER ?? "").trim().toLowerCase();
-
-  switch (provider) {
-    case "resend":
-      return deliverViaResend(input);
-    case "log":
-    case "":
-      return deliverToLog(input);
-    default:
-      return {
-        delivered: false,
-        provider,
-        reason: `Unknown CONTACT_PROVIDER "${provider}". Supported: "resend", "log".`,
-      };
-  }
-}
-
-/** Local development fallback. Never used when a provider is configured. */
-function deliverToLog(input: ContactInput): DeliveryResult {
-  console.info(
-    "[contact] enquiry received (no provider configured, not delivered)",
-    JSON.stringify({
+export const loggingDelivery: ContactDelivery = {
+  async deliver(input) {
+    // Email is included: this log is server-side only and the message cannot be
+    // acted on without it. It is never sent anywhere else.
+    console.info("[contact] submission received", {
       name: input.name,
       email: input.email,
-      organization: input.organization,
-      role: input.role,
-      messageLength: input.message.length,
+      organization: input.organization ?? null,
+      contextLength: input.context.length,
+      deliveryConfigured: false,
       at: new Date().toISOString(),
-    }),
-  );
-  return {
-    delivered: false,
-    provider: "log",
-    reason: "No CONTACT_PROVIDER configured; the enquiry was logged, not sent.",
-  };
+    });
+
+    return { delivered: false };
+  },
+};
+
+let delivery: ContactDelivery = loggingDelivery;
+
+/** Swap the implementation at startup, or in a test. */
+export function setContactDelivery(implementation: ContactDelivery): void {
+  delivery = implementation;
 }
 
-async function deliverViaResend(input: ContactInput): Promise<DeliveryResult> {
-  const apiKey = process.env.CONTACT_API_KEY;
-  const to = process.env.CONTACT_TO_EMAIL;
-  const from = process.env.CONTACT_FROM_EMAIL;
-
-  if (!apiKey || !to || !from) {
-    return {
-      delivered: false,
-      provider: "resend",
-      reason: "CONTACT_API_KEY, CONTACT_TO_EMAIL and CONTACT_FROM_EMAIL must all be set.",
-    };
-  }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      reply_to: input.email,
-      subject: `Collaboration enquiry — ${input.organization}`,
-      // Plain text only: nothing the sender wrote is ever interpreted as markup.
-      text: [
-        `Name: ${input.name}`,
-        `Email: ${input.email}`,
-        `Organisation: ${input.organization}`,
-        `Role: ${input.role}`,
-        "",
-        input.message,
-      ].join("\n"),
-    }),
-  });
-
-  if (!response.ok) {
-    // The provider's response body may echo the request; keep it out of the log.
-    return {
-      delivered: false,
-      provider: "resend",
-      reason: `Provider returned ${response.status}.`,
-    };
-  }
-
-  return { delivered: true, provider: "resend" };
+export function getContactDelivery(): ContactDelivery {
+  return delivery;
 }

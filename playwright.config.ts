@@ -1,58 +1,53 @@
+import { existsSync } from "node:fs";
+
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.PORT ?? 3210);
+const PORT = Number(process.env.PORT ?? 3000);
 const baseURL = `http://127.0.0.1:${PORT}`;
 
 /**
- * End-to-end configuration.
+ * Use a pre-installed Chromium when the environment provides one.
  *
- * Runs against a production build, because several of the properties under test —
- * security headers, static generation, the deferred 3D chunk — only exist there.
- * `CHROMIUM_PATH` lets a pre-installed browser be used instead of a downloaded one.
+ * CI images often ship a browser build that does not match the exact revision
+ * this Playwright version would download. Pointing at the provided binary keeps
+ * the suite runnable without a network fetch; where no such binary exists this
+ * is undefined and Playwright resolves its own browser as usual.
  */
+const PREINSTALLED_CHROMIUM = "/opt/pw-browsers/chromium";
+const executablePath = existsSync(PREINSTALLED_CHROMIUM) ? PREINSTALLED_CHROMIUM : undefined;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: process.env.CI ? "github" : "list",
   timeout: 45_000,
-  expect: { timeout: 8_000 },
+
   use: {
     baseURL,
     trace: "on-first-retry",
-    screenshot: "only-on-failure",
-    ...(process.env.CHROMIUM_PATH
-      ? { launchOptions: { executablePath: process.env.CHROMIUM_PATH } }
-      : {}),
+    // The narrative is scroll-driven; a stable viewport keeps ScrollTrigger
+    // measurements deterministic between runs.
+    viewport: { width: 1280, height: 900 },
   },
+
   projects: [
     {
       name: "desktop",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      use: { ...devices["Desktop Chrome"], launchOptions: { executablePath } },
     },
     {
       name: "mobile",
-      use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 360, height: 800 },
-        isMobile: false,
-      },
-    },
-    {
-      name: "reduced-motion",
-      use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1280, height: 800 },
-        contextOptions: { reducedMotion: "reduce" },
-      },
+      use: { ...devices["Pixel 7"], launchOptions: { executablePath } },
     },
   ],
+
   webServer: {
-    command: `npx next start -p ${PORT}`,
+    command: "npm run build && npm run start",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
   },
 });
