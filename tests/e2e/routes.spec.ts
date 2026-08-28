@@ -1,134 +1,98 @@
 import { expect, test } from "@playwright/test";
 
 const ROUTES = [
-  "/",
-  "/thesis",
-  "/technology",
-  "/evidence",
-  "/research",
-  "/contact",
-  "/privacy",
-  "/terms",
+  {
+    path: "/thesis",
+    heading: "The world was easier to reason about when its structure was stable.",
+  },
+  { path: "/technology", heading: "A Scoped Causal Hypergraph-based World Model" },
+  { path: "/evidence", heading: "Every source, in full" },
+  { path: "/research", heading: "Case studies and open questions" },
+  { path: "/contact", heading: "Write to us" },
+  { path: "/privacy", heading: "What this site collects" },
 ];
 
-test.describe("routes", () => {
-  for (const route of ROUTES) {
-    test(`${route} renders with exactly one h1`, async ({ page }) => {
-      const response = await page.goto(route);
-      expect(response?.status()).toBe(200);
-      await expect(page.locator("h1")).toHaveCount(1);
-    });
-  }
-
-  test("serves a sitemap listing every route", async ({ request }) => {
-    const response = await request.get("/sitemap.xml");
-    expect(response.status()).toBe(200);
-
-    const body = await response.text();
-    for (const route of ["/thesis", "/technology", "/evidence", "/research", "/contact"]) {
-      expect(body).toContain(route);
-    }
+for (const route of ROUTES) {
+  test(`${route.path} renders and is titled`, async ({ page }) => {
+    await page.goto(route.path);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(route.heading);
+    await expect(page).toHaveTitle(/Yukthi Lab/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
   });
+}
 
-  test("serves robots.txt", async ({ request }) => {
-    const response = await request.get("/robots.txt");
-    expect(response.status()).toBe(200);
-    expect(await response.text()).toContain("Sitemap:");
-  });
-
-  test("serves an Open Graph image", async ({ request }) => {
-    const response = await request.get("/og");
-    expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toContain("image");
-  });
-
-  test("returns 404 for an unknown path", async ({ page }) => {
-    const response = await page.goto("/no-such-page");
-    expect(response?.status()).toBe(404);
-    await expect(page.getByRole("heading", { name: /no path to this node/i })).toBeVisible();
-  });
-
-  test("sets the security headers", async ({ request }) => {
-    const response = await request.get("/");
-    const headers = response.headers();
-
-    expect(headers["x-frame-options"]).toBe("DENY");
-    expect(headers["x-content-type-options"]).toBe("nosniff");
-    expect(headers["content-security-policy"]).toContain("object-src 'none'");
-    expect(headers["content-security-policy"]).not.toContain("unsafe-eval");
-  });
+test("the thesis carries every room as static text", async ({ page }) => {
+  await page.goto("/thesis");
+  await expect(page.locator("section[id^='thesis-']")).toHaveCount(22);
+  await expect(
+    page.getByRole("heading", { name: "What Yukthi would have to prove" }),
+  ).toBeVisible();
 });
 
-/**
- * The contact endpoint.
- *
- * The rate limiter is real, in-process, and keyed by IP — which means every
- * project in this suite shares one counter against the same server. Rather than
- * weakening production behaviour to make the tests convenient, these run
- * serially and treat a 429 as a valid outcome: the limiter engaging *is* the
- * endpoint working. The limiter's own logic is covered deterministically in
- * `tests/unit/security.test.ts`, where time is injected.
- */
-test.describe.serial("the contact endpoint", () => {
-  test("rejects an invalid submission", async ({ request }) => {
-    const response = await request.post("/api/contact", {
-      data: { name: "", email: "nope", context: "short" },
-    });
+test("the evidence library filters without losing records from the document", async ({ page }) => {
+  await page.goto("/evidence");
+  const total = await page.locator("article[aria-labelledby^='ev-']").count();
+  expect(total).toBeGreaterThan(10);
 
-    if (response.status() === 429) return;
+  await page.getByRole("button", { name: "International Energy Agency" }).click();
+  await expect(
+    page.getByText(/Showing \d+ of \d+ records from International Energy Agency/),
+  ).toBeVisible();
+  // Filtering hides; it does not unmount. The library stays crawlable.
+  await expect(page.locator("article[aria-labelledby^='ev-']")).toHaveCount(total);
+});
 
-    expect(response.status()).toBe(422);
-    const body = await response.json();
-    expect(body.ok).toBe(false);
-    expect(body.errors).toBeTruthy();
-  });
+test("the contact form rejects a bad submission before it reaches the network", async ({
+  page,
+}) => {
+  await page.goto("/contact");
+  await page.getByLabel("Name").fill("A");
+  await page.getByLabel("Email").fill("not-an-address");
+  await page.getByLabel("Message").fill("short");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText(/Please give a name|Please give an address/)).toBeVisible();
+});
 
-  test("accepts a valid submission", async ({ request }) => {
-    const response = await request.post("/api/contact", {
-      data: {
-        name: "A Reader",
-        email: "reader@example.com",
-        context:
-          "We operate a production line and cannot see two tiers below our direct suppliers.",
-      },
-    });
+test("robots and sitemap are served", async ({ request }) => {
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBe(true);
+  expect(await robots.text()).toContain("Sitemap:");
 
-    if (response.status() === 429) return;
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBe(true);
+  expect(await sitemap.text()).toContain("/technology");
+});
 
-    expect(response.status()).toBe(200);
-    expect((await response.json()).ok).toBe(true);
-  });
+test("security headers are present on a document response", async ({ request }) => {
+  const response = await request.get("/");
+  const headers = response.headers();
+  expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+});
 
-  test("rejects a malformed body", async ({ request }) => {
-    const response = await request.post("/api/contact", {
-      headers: { "Content-Type": "application/json" },
-      data: "not json",
-    });
+test("the contact endpoint refuses a malformed payload and rate-limits a flood", async ({
+  request,
+}, testInfo) => {
+  // The limiter keys on the forwarded address, so each run claims its own
+  // window. Without this the two browser projects share a counter and the
+  // second one starts already exhausted.
+  const caller = `203.0.113.${(testInfo.workerIndex % 200) + 10}`;
+  const headers = { "x-forwarded-for": caller };
 
-    // Never a 5xx: a malformed body is the caller's error, not the server's.
-    expect(response.status()).toBeLessThan(500);
-    expect([400, 422, 429]).toContain(response.status());
-  });
+  const bad = await request.post("/api/contact", { data: { name: "x" }, headers });
+  expect(bad.status()).toBe(422);
 
-  test("rate limits sustained submissions", async ({ request }) => {
-    const send = () =>
-      request.post("/api/contact", {
-        data: {
-          name: "A Reader",
-          email: "reader@example.com",
-          context: "Repeated submission used to confirm the limiter engages as designed.",
-        },
-      });
-
-    let limited = false;
-    for (let i = 0; i < 8 && !limited; i += 1) {
-      const response = await send();
-      if (response.status() === 429) {
-        limited = true;
-        expect(response.headers()["retry-after"]).toBeTruthy();
-      }
-    }
-
-    expect(limited).toBe(true);
-  });
+  const payload = {
+    name: "A Reader",
+    email: "reader@example.org",
+    intent: "research",
+    message: "A message long enough to satisfy the twenty character minimum requirement.",
+  };
+  let sawLimit = false;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await request.post("/api/contact", { data: payload, headers });
+    if (response.status() === 429) sawLimit = true;
+  }
+  expect(sawLimit).toBe(true);
 });

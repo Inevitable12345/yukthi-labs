@@ -1,55 +1,42 @@
-import { SITE, siteUrl } from "@/lib/metadata/site";
+import { SITE } from "@/lib/metadata/site";
+
+type Schema = Record<string, unknown>;
 
 /**
- * Structured data.
- *
- * Emitted as a script tag with JSON.stringify rather than a template literal, so
- * a stray character in the content cannot break out of the script context.
+ * Structured metadata (§45). Serialised with `<` escaped so a stray character
+ * in the payload can never close the script element early.
  */
-function JsonLdScript({ data }: { data: Record<string, unknown> }) {
-  return (
-    <script
-      type="application/ld+json"
-      // The payload is authored constants, and stringify escapes the rest.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
-    />
-  );
+export function JsonLd({ schema }: { schema: Schema | Schema[] }) {
+  const json = JSON.stringify(schema).replace(/</g, "\\u003c");
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
 }
 
-export function OrganizationJsonLd() {
-  return (
-    <JsonLdScript
-      data={{
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: SITE.name,
-        url: siteUrl(),
-        description: SITE.description,
-        slogan: SITE.mission,
-      }}
-    />
-  );
+export function organizationSchema(): Schema {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE.name,
+    alternateName: SITE.shortName,
+    url: SITE.url,
+    description: `${SITE.mission} ${SITE.bet}`,
+    slogan: SITE.mission,
+    knowsAbout: [
+      "Causal inference",
+      "Hypergraphs",
+      "World models",
+      "Systemic risk",
+      "Supply chain dependency analysis",
+    ],
+  };
 }
 
-export function WebPageJsonLd({
-  name,
-  description,
-  path,
-}: {
-  name: string;
-  description: string;
-  path: string;
-}) {
-  return (
-    <JsonLdScript
-      data={{
-        "@context": "https://schema.org",
-        "@type": "WebPage",
-        name,
-        description,
-        url: `${siteUrl()}${path}`,
-        isPartOf: { "@type": "WebSite", name: SITE.name, url: siteUrl() },
-      }}
-    />
-  );
+export function pageSchema(name: string, description: string, path: string): Schema {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name,
+    description,
+    url: new URL(path, SITE.url).toString(),
+    isPartOf: { "@type": "WebSite", name: SITE.name, url: SITE.url },
+  };
 }

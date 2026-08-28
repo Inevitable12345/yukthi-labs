@@ -2,43 +2,36 @@
 
 import { useEffect } from "react";
 
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
-
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
   useEffect(() => {
-    console.error(error);
+    console.error("[yukthi] unhandled", error);
   }, [error]);
 
   return (
-    <div className="u-gutter py-32">
-      <InstrumentLabel tone="rupture">Error</InstrumentLabel>
-      <h1 className="u-display-2 mt-6 max-w-[16ch] text-bone">Something failed to resolve.</h1>
-      <p className="u-lede u-measure mt-8">
-        The page could not be rendered. The argument itself is unaffected — try again, or start
-        from the beginning.
-      </p>
-
-      <div className="mt-12 flex flex-wrap gap-8">
-        <button
-          type="button"
-          onClick={reset}
-          className="border border-gold px-6 py-3.5 font-mono text-[0.6875rem] tracking-[0.18em] text-gold uppercase transition-colors hover:bg-gold hover:text-void"
-        >
-          Try again
-        </button>
+    <div className="px-5 pt-36 sm:px-8">
+      <div className="mx-auto max-w-[86rem]">
+        <p className="label">Yukthi / Observatory / fault</p>
+        <h1 className="display mt-5 max-w-[20ch]">The instrument stopped responding.</h1>
+        <p className="standfirst mt-6 max-w-[52ch]">
+          Something failed while rendering this view. The argument itself is intact — the thesis
+          page carries all of it as plain text.
+        </p>
+        <div className="mt-10 flex flex-wrap gap-6">
+          <button
+            type="button"
+            onClick={reset}
+            className="border border-brass px-5 py-2.5 font-mono text-[0.72rem] tracking-[0.18em] uppercase text-brass transition-colors hover:bg-brass hover:text-void"
+          >
+            Try again
+          </button>
+          <a
+            href="/thesis"
+            className="border border-graphite px-5 py-2.5 font-mono text-[0.72rem] tracking-[0.18em] uppercase text-ash transition-colors hover:text-bone"
+          >
+            Read the thesis
+          </a>
+        </div>
       </div>
-
-      {error.digest ? (
-        <InstrumentLabel as="p" className="mt-10">
-          Reference {error.digest}
-        </InstrumentLabel>
-      ) : null}
     </div>
   );
 }

@@ -1,65 +1,63 @@
 /* ============================================================================
-   RATE LIMITING (§34)
+   RATE LIMIT  (§43)
    ----------------------------------------------------------------------------
-   A fixed-window limiter held in process memory.
-
-   This is honest about what it is: adequate for a single instance, and *not* a
-   distributed limiter. On multi-instance hosting it becomes per-instance, which
-   is stated in the deployment guide rather than papered over. The interface is
-   deliberately the shape a Redis-backed implementation would have, so swapping
-   it does not touch the route.
+   A fixed-window counter held in process memory. It is intentionally modest:
+   enough to stop a form being hammered from one address, honest about the fact
+   that a serverless deployment runs many instances. Swap `consume` for a shared
+   store (Upstash, Redis) if the contact route ever needs a hard guarantee.
    ========================================================================== */
 
-export type RateLimitResult = {
+export type RateLimitVerdict = {
   ok: boolean;
   remaining: number;
-  /** Seconds until the window resets. */
-  retryAfter: number;
+  /** Seconds until the current window resets. */
+  resetInSeconds: number;
 };
 
-type Window = { count: number; resetAt: number };
+type Window = { count: number; expiresAt: number };
+
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 5;
 
 const windows = new Map<string, Window>();
 
-/** Bounded so a flood of unique keys cannot grow the map without limit. */
-const MAX_TRACKED_KEYS = 10_000;
-
-export function rateLimit(
+export function consume(
   key: string,
-  {
-    limit = 5,
-    windowMs = 60_000,
-    now = Date.now(),
-  }: { limit?: number; windowMs?: number; now?: number } = {},
-): RateLimitResult {
+  now = Date.now(),
+  limit = MAX_PER_WINDOW,
+  windowMs = WINDOW_MS,
+): RateLimitVerdict {
   const existing = windows.get(key);
 
-  if (!existing || existing.resetAt <= now) {
-    if (windows.size >= MAX_TRACKED_KEYS) {
-      for (const [candidate, window] of windows) {
-        if (window.resetAt <= now) windows.delete(candidate);
-      }
-      // Still full of live windows: refuse rather than grow unbounded.
-      if (windows.size >= MAX_TRACKED_KEYS) {
-        return { ok: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
-      }
-    }
-
-    windows.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, remaining: limit - 1, retryAfter: 0 };
+  if (!existing || existing.expiresAt <= now) {
+    windows.set(key, { count: 1, expiresAt: now + windowMs });
+    return { ok: true, remaining: limit - 1, resetInSeconds: Math.ceil(windowMs / 1000) };
   }
 
   existing.count += 1;
-  const retryAfter = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
-
-  if (existing.count > limit) {
-    return { ok: false, remaining: 0, retryAfter };
-  }
-
-  return { ok: true, remaining: limit - existing.count, retryAfter: 0 };
+  const resetInSeconds = Math.max(1, Math.ceil((existing.expiresAt - now) / 1000));
+  return {
+    ok: existing.count <= limit,
+    remaining: Math.max(0, limit - existing.count),
+    resetInSeconds,
+  };
 }
 
-/** Test hygiene. */
-export function resetRateLimits(): void {
+/** Drops expired windows. Called opportunistically by the contact route. */
+export function sweep(now = Date.now()): void {
+  for (const [key, window] of windows) {
+    if (window.expiresAt <= now) windows.delete(key);
+  }
+}
+
+/** Test seam. */
+export function reset(): void {
   windows.clear();
+}
+
+/** Best-effort client identity from proxy headers. Never trusted for auth. */
+export function clientKey(headers: Headers): string {
+  const forwarded = headers.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first || headers.get("x-real-ip") || "anonymous";
 }

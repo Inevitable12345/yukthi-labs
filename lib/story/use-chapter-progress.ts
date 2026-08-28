@@ -1,108 +1,38 @@
 "use client";
 
-import { useGSAP } from "@gsap/react";
-import { useRef } from "react";
-
-import { ScrollTrigger, gsap } from "./gsap";
-import { storyStore } from "./store";
-import type { StoryChapter } from "./chapters";
-
-/* ============================================================================
-   CHAPTER → STORY STATE (§6, §27)
-   ----------------------------------------------------------------------------
-   Attaches one ScrollTrigger to a chapter section and reports normalised
-   progress into the story store.
-
-   Engineering rules this hook exists to enforce in one place:
-     · one trigger per chapter, created inside a `useGSAP` scope so that its
-       revert() removes the trigger on unmount and on every hot reload;
-     · `scrub`-style continuous reporting via onUpdate, never a tween on the
-       pinned wrapper itself;
-     · progress is read from the trigger rather than accumulated, so reverse
-       scrolling reconstructs the identical value.
-   ========================================================================== */
-
-export function useChapterProgress(chapter: StoryChapter) {
-  const ref = useRef<HTMLElement | null>(null);
-
-  useGSAP(
-    () => {
-      const element = ref.current;
-      if (!element) return;
-
-      const report = (self: ScrollTrigger) => {
-        // `isActive` is true only while the section spans the trigger band, so a
-        // chapter scrolling away cannot claim the current-chapter slot from the
-        // one arriving beneath it.
-        storyStore.setChapterProgress(chapter, self.progress, self.isActive);
-      };
-
-      const trigger = ScrollTrigger.create({
-        trigger: element,
-        // The chapter owns the story state from the moment its top reaches the
-        // lower third of the viewport until its bottom leaves the upper third.
-        start: "top 66%",
-        end: "bottom 33%",
-        onUpdate: report,
-        onToggle: report,
-      });
-
-      // Report once on creation so a reload deep in the page starts correct
-      // rather than waiting for the first scroll event.
-      storyStore.setChapterProgress(chapter, trigger.progress, trigger.isActive);
-
-      return () => {
-        trigger.kill();
-      };
-    },
-    { scope: ref, dependencies: [chapter] },
-  );
-
-  return ref;
-}
+import { useEffect, useRef, useState } from "react";
+import type { Chapter } from "./chapters";
+import { readProgress } from "./store";
 
 /**
- * A scrubbed timeline pinned to a section (§6).
+ * Polls one room's scroll progress on animation frames, re-rendering only when
+ * it moves by more than `step`. Used by the few DOM scenes that are genuinely
+ * scrubbed — a propagating cascade, a tightening feedback loop — rather than
+ * simply revealed.
  *
- * `build` receives a timeline whose playhead is driven by scroll position. It
- * must animate children — never the pinned wrapper — and must not create its own
- * ScrollTriggers.
+ * `step` trades smoothness for renders. The default of 1/60 is imperceptible
+ * on a progress-driven transform and keeps React out of the hot path.
  */
-export function usePinnedTimeline(
-  build: (timeline: gsap.core.Timeline) => void,
-  options: { enabled?: boolean; endDistance?: string; anticipatePin?: boolean } = {},
-) {
-  const { enabled = true, endDistance = "+=140%", anticipatePin = true } = options;
-  const ref = useRef<HTMLDivElement | null>(null);
+export function useChapterProgress(chapter: Chapter, step = 1 / 60): number {
+  const [value, setValue] = useState(0);
+  const latest = useRef(0);
 
-  useGSAP(
-    () => {
-      const element = ref.current;
-      if (!element || !enabled) return;
+  useEffect(() => {
+    let frame = 0;
+    const tick = () => {
+      const next = readProgress(chapter);
+      if (
+        Math.abs(next - latest.current) >= step ||
+        (next !== latest.current && (next === 0 || next === 1))
+      ) {
+        latest.current = next;
+        setValue(next);
+      }
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [chapter, step]);
 
-      const timeline = gsap.timeline({
-        scrollTrigger: {
-          trigger: element,
-          start: "top top",
-          end: endDistance,
-          scrub: 0.6,
-          pin: true,
-          // Pinning without this causes a one-frame jump on fast scroll as the
-          // pin spacer is inserted.
-          anticipatePin: anticipatePin ? 1 : 0,
-          invalidateOnRefresh: true,
-        },
-      });
-
-      build(timeline);
-
-      return () => {
-        timeline.scrollTrigger?.kill();
-        timeline.kill();
-      };
-    },
-    { scope: ref, dependencies: [enabled] },
-  );
-
-  return ref;
+  return value;
 }

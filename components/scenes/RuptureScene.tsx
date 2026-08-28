@@ -1,153 +1,128 @@
 "use client";
 
-import { useGSAP } from "@gsap/react";
-import { useRef } from "react";
-
-import { gsap } from "@/lib/story/gsap";
+import { useMemo } from "react";
+import { Room } from "@/components/story/Room";
+import { RoomBody } from "@/components/story/RoomBody";
+import { RoomHeading } from "@/components/story/RoomHeading";
 import { useChapterProgress } from "@/lib/story/use-chapter-progress";
-import { usePrefersReducedMotion } from "@/lib/utils/use-capability";
-import { EvidenceInspector } from "@/components/evidence/EvidenceInspector";
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
+import { seeded } from "@/lib/world/random";
 
 /* ============================================================================
-   ACT II — RUPTURE (§8)
+   ROOM 02 — RUPTURE  (§7)
    ----------------------------------------------------------------------------
-   The world is not exploded. It is rewired.
+   The world is rewired, not exploded. Routes do not vanish; they are redrawn
+   inside blocs, and the handful that still cross between them thicken into the
+   strategic dependencies the rest of the exhibition is about.
 
-   That distinction is the content of this act: an explosion would say the system
-   was destroyed, when what actually happened is that it was *rearranged* and
-   kept running. The five stages below are a progression in one property —
-   whether economic connection is a matter of efficiency or of strategy.
+   Scrubbed by scroll so the visitor controls the transition and can run it
+   backwards — which is the only way to see that nothing was destroyed.
    ========================================================================== */
 
-const STAGES = [
-  {
-    label: "Globalisation",
-    detail: "Connection organised by comparative advantage. Cost is the criterion.",
-  },
-  {
-    label: "Strategic interdependence",
-    detail: "The same connections are recognised as dependencies. Nothing physical changes.",
-  },
-  {
-    label: "Friend-shoring and industrial policy",
-    detail:
-      "Connection is re-formed by political alignment. Cost becomes one criterion among several.",
-  },
-  {
-    label: "Multipolar competition",
-    detail: "Blocs consolidate. Trade grows faster within them than between them.",
-  },
-  {
-    label: "Networks as leverage",
-    detail:
-      "Economic connection becomes an instrument. The network is now something to be used.",
-  },
-];
+const NODES = 34;
+const ROUTES = 46;
+
+type Node = { id: number; open: [number, number]; bloc: [number, number]; group: number };
+
+function buildNodes(): Node[] {
+  const random = seeded(4242);
+  return Array.from({ length: NODES }, (_, id) => {
+    const angle = (id / NODES) * Math.PI * 2 + random() * 0.2;
+    const radius = 58 + random() * 46;
+    const group = id % 4;
+    const blocAngle = (group / 4) * Math.PI * 2 + Math.PI / 4;
+    const clusterAngle = angle + (blocAngle - angle) * 0.86;
+    const clusterRadius = 36 + random() * 26;
+    return {
+      id,
+      open: [Math.cos(angle) * radius, Math.sin(angle) * radius * 0.62],
+      bloc: [
+        Math.cos(blocAngle) * 86 + Math.cos(clusterAngle) * clusterRadius * 0.5,
+        Math.sin(blocAngle) * 54 + Math.sin(clusterAngle) * clusterRadius * 0.42,
+      ],
+      group,
+    };
+  });
+}
 
 export function RuptureScene() {
-  const chapterRef = useChapterProgress("rupture");
-  const container = useRef<HTMLDivElement>(null);
-  const reducedMotion = usePrefersReducedMotion();
+  const progress = useChapterProgress("rupture");
+  const { nodes, routes } = useMemo(() => {
+    const built = buildNodes();
+    const random = seeded(1337);
+    const list = Array.from({ length: ROUTES }, () => {
+      const a = Math.floor(random() * NODES);
+      const b = Math.floor(random() * NODES);
+      return { a, b, cross: built[a]!.group !== built[b]!.group };
+    });
+    return { nodes: built, routes: list };
+  }, []);
 
-  useGSAP(
-    () => {
-      if (reducedMotion) return;
-
-      // A scrubbed reveal of stages that are already present. The timeline
-      // animates children of the trigger, never the section itself.
-      gsap.from("[data-rupture-stage]", {
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top 72%",
-          end: "bottom 62%",
-          scrub: 0.8,
-        },
-        // No opacity in this reveal. Any value low enough to read as a fade
-        // takes this type below AA contrast, and a reveal that renders its own
-        // text unreadable while it is on screen is a reveal that failed. The
-        // sequential arrival is carried entirely by the horizontal offset.
-        x: -18,
-        stagger: 0.35,
-        ease: "none",
-      });
-    },
-    { scope: container, dependencies: [reducedMotion] },
-  );
+  // The rewiring runs across the middle of the room, leaving a settled state at
+  // each end so the two topologies can actually be compared.
+  const t = Math.min(1, Math.max(0, (progress - 0.18) / 0.5));
 
   return (
-    <section
-      ref={chapterRef as React.RefObject<HTMLElement>}
-      id="rupture"
-      aria-labelledby="rupture-heading"
-      className="u-gutter relative scroll-mt-24 border-t border-[color:var(--hairline)] py-24 sm:py-32 lg:pl-[calc(var(--gutter)+var(--rail-width))]"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:gap-8">
-        <InstrumentLabel tone="gold" className="tabular-nums">
-          02
-        </InstrumentLabel>
-        <InstrumentLabel>The rupture</InstrumentLabel>
-      </div>
-
-      <h2 id="rupture-heading" className="u-display-2 mt-8 max-w-[20ch] text-bone">
-        The world did not simply become noisier. Its structure began to change.
-      </h2>
-
-      <p className="u-lede u-measure mt-8">
-        Noise is a property of a system whose structure holds. What happened instead was a
-        rewiring: the same nodes, connected differently, for different reasons. Trade did not
-        stop. It reorganised — and a model fitted to the old arrangement has no way to notice.
-      </p>
-
-      <div
-        ref={container}
-        className="mt-20 grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-24"
-      >
-        <ol className="space-y-0">
-          {STAGES.map((stage, index) => (
-            <li
-              key={stage.label}
-              data-rupture-stage
-              className="border-l border-[color:var(--hairline)] py-6 pl-6"
-            >
-              <div className="flex items-baseline gap-4">
-                <InstrumentLabel tone="steel" className="tabular-nums">
-                  {String(index + 1).padStart(2, "0")}
-                </InstrumentLabel>
-                <h3 className="font-display text-[1.5rem] leading-tight font-light text-bone">
-                  {stage.label}
-                </h3>
-              </div>
-              <p className="u-body mt-2">{stage.detail}</p>
-            </li>
-          ))}
-        </ol>
-
-        <div className="space-y-10">
-          <p className="u-body u-measure">
-            The measurable form of this is visible in the trade data. WTO staff find trade
-            growth between geopolitical blocs slowing relative to growth within them — and are
-            careful to say that reorganisation visible in the data is not the same thing as
-            fragmentation as a completed state. This site keeps that distinction.
-          </p>
-
-          <p className="u-body u-measure">
-            The cost is not hypothetical either. IMF staff put long-run output losses from
-            fragmentation between roughly 0.2% and nearly 7% of global GDP depending on how deep
-            it runs; independent WTO simulation work puts full decoupling into two blocs at
-            around 5%. Two different modelling traditions, the same order of magnitude.
-          </p>
-
-          <p className="u-body u-measure">
-            And it is recognised by the people it affects: geoeconomic confrontation is ranked
-            the risk most likely to trigger a material global crisis in the coming year. That
-            expectation is not merely a reading of the system — it is one of the forces
-            reshaping it.
-          </p>
-
-          <EvidenceInspector ids={["E-001", "E-002", "E-003", "E-004"]} />
+    <Room id="rupture" pinned={false}>
+      <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start lg:gap-20">
+        <div>
+          <RoomHeading id="rupture" />
+          <RoomBody id="rupture" className="mt-9" />
         </div>
+
+        <figure className="relative lg:sticky lg:top-28 lg:self-start">
+          <svg viewBox="-140 -100 280 200" className="h-auto w-full" aria-hidden="true">
+            <g>
+              {routes.map((route, index) => {
+                const a = nodes[route.a]!;
+                const b = nodes[route.b]!;
+                const ax = a.open[0] + (a.bloc[0] - a.open[0]) * t;
+                const ay = a.open[1] + (a.bloc[1] - a.open[1]) * t;
+                const bx = b.open[0] + (b.bloc[0] - b.open[0]) * t;
+                const by = b.open[1] + (b.bloc[1] - b.open[1]) * t;
+                // Cross-bloc routes thin out and the survivors brighten:
+                // fewer, longer, more consequential.
+                const survives = route.cross ? index % 5 === 0 : true;
+                const opacity = route.cross
+                  ? survives
+                    ? 0.18 + t * 0.55
+                    : 0.3 * (1 - t)
+                  : 0.22 + t * 0.2;
+                return (
+                  <line
+                    key={index}
+                    x1={ax}
+                    y1={ay}
+                    x2={bx}
+                    y2={by}
+                    stroke={
+                      route.cross && survives ? "var(--color-rupture)" : "var(--color-signal)"
+                    }
+                    strokeWidth={route.cross && survives ? 0.7 + t * 0.6 : 0.4}
+                    opacity={opacity}
+                  />
+                );
+              })}
+            </g>
+            <g>
+              {nodes.map((node) => (
+                <circle
+                  key={node.id}
+                  cx={node.open[0] + (node.bloc[0] - node.open[0]) * t}
+                  cy={node.open[1] + (node.bloc[1] - node.open[1]) * t}
+                  r={node.id % 7 === 0 ? 2.4 : 1.4}
+                  fill="var(--color-brass)"
+                  opacity={0.55 + (node.id % 7 === 0 ? 0.35 : 0.15)}
+                />
+              ))}
+            </g>
+          </svg>
+          <figcaption className="mt-4 font-mono text-[0.68rem] leading-relaxed tracking-[0.1em] text-ash">
+            {t < 0.5
+              ? "Integrated topology. Routes distributed, substitutes plentiful, no single link decisive."
+              : "Rewired topology. The same nodes, reorganised into blocs. The few surviving cross-bloc routes carry the exposure."}
+          </figcaption>
+        </figure>
       </div>
-    </section>
+    </Room>
   );
 }

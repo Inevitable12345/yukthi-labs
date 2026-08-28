@@ -1,172 +1,118 @@
 # Architecture
 
-## The one idea
+Notes on the decisions that are not obvious from the file tree, and why they went
+the way they did.
 
-The site is an argument, and the scroll is the argument. Everything below exists
-to keep one claim honest: that the globe the reader watches at the start and the
-causal hypergraph they watch at the end are **the same object**, reorganised.
+---
 
-That is not a metaphor in the implementation. There is one set of nodes. Each
-node holds a position in each of eight layouts. The world interpolates between
-two of them every frame. Nothing is created, destroyed, or cross-faded.
+## One argument, two renderings
 
-## Layers
+`content/thesis.ts` holds every word the exhibition speaks, keyed by room. The
+homepage renders it spatially; `/thesis` renders it as prose. Neither authors
+copy of its own.
 
-```
-lib/story/          the spine — chapter order, state, GSAP wiring
-lib/world/          geometry, camera grammar, palette
-components/world/   the WebGL instrument
-components/scenes/  the thirteen chapters as DOM
-components/hypergraph/  the 2D diagram renderer
-data/               evidence, graphs, scopes, scenarios — all schema-validated
-```
+The reason is not tidiness. A serious reader should be able to check a claim
+without scrolling through twenty held scenes, and the whole argument existing as
+plain static HTML is the strongest possible answer to both the WebGL-failure
+requirement and the crawlability requirement at once.
 
-### `lib/story` — one source of truth
+## Story state lives outside React
 
-`chapters.ts` is the only place chapter order lives. The rail, the scroll
-triggers, the world form and the camera all derive from it. Adding a chapter is
-one edit.
+`ScrollTrigger` writes two numbers into `lib/story/store.ts`. Nothing is animated
+from that file.
 
-`store.ts` is a hand-written external store rather than React state, for one
-specific reason: ScrollTrigger writes progress continuously, the WebGL world
-needs that value every frame, and the DOM needs it roughly twice a minute.
+Two channels, deliberately:
 
-- `read()` returns the live object; the frame loop calls it and never subscribes.
-- `subscribe()` fires only when a **coarse** value changes — chapter, world form,
-  camera mode. That is what the DOM binds to.
+- Chapter changes are rare and every consumer cares → React subscription via
+  `useSyncExternalStore`.
+- Progress changes on every scroll frame → plain reads. Pushing it through React
+  would re-render the document sixty times a second for no benefit.
 
-Routing both through React state would re-render the tree sixty times a second to
-change a heading that changes twice a minute.
+The store holds a **position**, not a playhead. There is no direction to reverse,
+which is why scrolling backwards needs no code of its own.
 
-Because every value derives from scroll position alone, **reverse scroll
-reconstructs prior states exactly**. There is no accumulated state to drift.
-`tests/unit/story-store.test.ts` asserts this directly.
+## Sticky, not pinned
 
-### `lib/world/geometry.ts` — the eight forms
+Rooms marked `held` use CSS `position: sticky`. ScrollTrigger's `pin` clones or
+re-parents the pinned element, which disturbs focus order, anchor targets and the
+accessibility tree. Sticky does none of that, and the scroll driver already has
+the progress value that pinning would have been used to obtain.
 
-`buildWorld(count)` produces nodes, downstream-only edges, and a few genuine
-hyperedges, all seeded so server, client and SVG fallback agree.
+## The world is one object
 
-`precomputeLayouts()` renders all eight layouts to flat `Float32Array`s once. The
-frame loop then does a single linear pass over a typed array — no trigonometry,
-no allocation.
+`components/world/WorldInstrument.tsx` holds a single point cloud and a single
+`LineSegments` for the entire exhibition. A room change rewrites the target
+buffer and takes the current positions as the morph origin.
 
-The layouts are the argument:
+That constraint is the whole reason the world reads as one instrument being
+re-understood rather than eight scenes played in order. It also means the frame
+cost is flat: no scene is ever created or destroyed mid-scroll.
 
-| Form                 | What it says                                                                      |
-| -------------------- | --------------------------------------------------------------------------------- |
-| `earth`              | An abstract body. Calm, evenly covered.                                           |
-| `global-network`     | The same body; strategic nodes lift clear of it.                                  |
-| `fragmented-network` | Nodes pull toward three bloc centres. The world **rewires**, it does not explode. |
-| `chokepoint`         | An hourglass: one node above, a narrow waist, an enormous fan below.              |
-| `causal-graph`       | Geography is gone. Nodes sit in causal layers.                                    |
-| `hypergraph`         | Layers gain depth; hyperedge members draw toward their junctions.                 |
-| `world-model`        | Evidence migrates outward into a monitoring shell.                                |
-| `futures`            | Downstream layers fan forward. Branches thin rather than terminate.               |
+Relations **crossfade** rather than morph, because their topology carries meaning
+that differs per form. A causal layer is not a trade route; interpolating between
+the two would produce a third thing that means nothing. Opacity dips to zero at
+the midpoint of a morph and the index buffer is swapped there, unseen.
 
-`chokepoint → causal-graph` is the transformation the whole site is built around.
+## Geometry is a pure function
 
-### `components/world` — the instrument
+`lib/world/forms.ts` maps `(form, index, count) → position` with a seeded PRNG.
 
-`CausalWorld` is the only component that touches the store's continuous value.
-Each frame it resolves the timeline into two layouts and a blend factor, then
-writes interpolated positions into **one shared buffer**. Every child reads that
-buffer through `world-context`, which carries a ref to a mutable `Float32Array`
-rather than the array itself — nothing here ever triggers a React render.
+Three things fall out of that:
 
-This is why the ESLint config disables `react-hooks/immutability` for
-`components/world/**` and nowhere else. That rule encodes React's render-phase
-purity, and it is right to. A `useFrame` callback is not a render: it runs on the
-animation loop against typed arrays bound for the GPU. Allocating per frame to
-satisfy the rule would produce sixty allocations a second. The two violations the
-rule caught _outside_ that directory were real bugs and were fixed.
+1. The world is identical on every reload. A world that rearranges itself when
+   you refresh is a world nobody reads as a model of anything.
+2. It is testable without a renderer (`tests/unit/world-forms.test.ts`).
+3. The SVG fallback renders the _same_ geometry through a completely different
+   pipeline, so the no-WebGL experience is the same argument rather than a
+   consolation prize.
 
-### Progressive enhancement
+## Hyperedges are the point
 
-1. The server renders an SVG world. It is what a crawler and a no-JavaScript
-   visitor see, and the first paint for everyone.
-2. The device tier resolves after mount (`lib/utils/capability.ts`).
-3. The 3D scene is imported only if the tier warrants it, and fades in over the
-   SVG rather than replacing it.
+`CausalRelation` has `sourceIds: string[]` and `targetIds: string[]`. Both are
+arrays and that is not a convenience.
 
-The static world stays mounted underneath, so a lost WebGL context does not blank
-the page.
+A pairwise graph cannot express "an export control **and** a processing
+concentration **together** constrain a component supply". `propagate()` therefore
+fires a relation only when _every_ one of its sources has been reached, and
+`CausalDiagram` draws a junction rather than parallel arrows — parallel arrows
+would quietly assert that either cause alone is sufficient.
 
-Tiers are a pure function of device signals, so the policy is unit-tested rather
-than trusted. Phones are treated conservatively on purpose: a phone that _can_
-run the scene often still should not, because sustained WebGL is what drains a
-battery.
+Propagation is computed as ordered waves rather than a shortest path, and
+terminates on the first wave that reaches nothing new, so cycles settle instead
+of looping forever. Feedback (room 06) is a cycle by construction.
 
-| Tier       | When                                    | Behaviour                                           |
-| ---------- | --------------------------------------- | --------------------------------------------------- |
-| `none`     | no WebGL                                | SVG world, full content parity                      |
-| `reduced`  | reduced motion, Save-Data, small device | on-demand frameloop, no camera travel, no particles |
-| `standard` | mid-range                               | full scene, fewer nodes, capped DPR                 |
-| `full`     | capable desktop                         | everything                                          |
+## Layout is deterministic, not simulated
 
-## Accessibility is structural, not a pass at the end
+`lib/graph/layout.ts` computes longest-path depth and a stable ordering within
+each depth. Force simulations are prettier and unrepeatable; a causal diagram
+that moves when you reload it is a diagram nobody trusts.
 
-- The complete argument is static HTML. `tests/e2e/narrative.spec.ts` runs with
-  JavaScript disabled and asserts the thesis, the evidence and the conclusion all
-  survive.
-- Every GSAP reveal animates **from** a visible resting state. If the timeline
-  never runs, the content is simply already legible.
-- No reveal animates text below AA contrast. Both scrubbed reveals carry their
-  sequence with offset alone, because every opacity low enough to read as a fade
-  took the type below threshold.
-- The canvas is `aria-hidden` throughout. Every claim it illustrates is written
-  in the DOM beside it.
-- Diagrams are `role="group"`, never `role="img"` — an `img` is an atomic leaf
-  that assistive technology will not descend into, which would make the focusable
-  nodes inside unreachable.
-- Scrollable figure regions are focusable, so a keyboard-only reader can pan a
-  diagram wider than their screen.
-- Meaning is never carried by colour alone; the rail encodes position with tick
-  length as well as colour.
+## Contrast is never animated
 
-## The epistemic discipline
+Several scenes show arrival, activation or ordering. None of them do it by fading
+text.
 
-`data/schema.ts` requires every node, relation and graph to declare one of five
-claim classes: observed fact, source claim, Yukthi interpretation, illustrative
-scenario, product ambition. They render distinctly wherever they appear.
+An element mid-fade is an element at a low contrast ratio, and a reader who
+arrives at that moment gets unreadable text. So progress is carried by colour
+transitions between two legible values, by position, or by a graphic element —
+never by opacity on words. The axe checks in `tests/e2e/accessibility.spec.ts`
+enforce it.
 
-Two constraints are enforced by tests rather than by intention:
+## Claim classes
 
-- **Every relation must carry a `mechanism`.** A relation without one is an
-  association wearing a causal label.
-- **No scenario may contain a probability.** `tests/unit/evidence.test.ts`
-  serialises the scenario data and asserts no probability field or phrasing
-  exists. A fabricated probability is worse than none, because it invites exactly
-  the reliance it cannot support.
+`ClaimClass` in `lib/graph/types.ts` is the discipline that makes the rest
+defensible: source fact, Yukthi interpretation, illustrative scenario and product
+ambition each get a distinct visual register, and every assertion carries one.
 
-`defineGraph()` validates and cross-checks references at module scope, so a
-malformed graph fails the build rather than a page view.
+`tests/unit/evidence.test.ts` fails the build if a probability or a guarantee of
+prediction appears anywhere in the copy, the evidence or the mechanisms.
 
-## Testing
+## Performance tiers
 
-| Suite                            | Covers                                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `tests/unit/story-store`         | reverse-scroll reconstruction, coarse-notification discipline                                           |
-| `tests/unit/world-geometry`      | determinism, node identity across forms, the hourglass asymmetry, downstream-only edges                 |
-| `tests/unit/evidence`            | every citation resolves, every relation has a mechanism, no probabilities                               |
-| `tests/unit/capability`          | tier policy and budget monotonicity                                                                     |
-| `tests/unit/security`            | CSP, headers, rate limiter, contact validation                                                          |
-| `tests/accessibility/components` | tablist semantics, dialog labelling, form errors, diagram focus                                         |
-| `tests/e2e`                      | axe WCAG A/AA on every route, no-JS parity, no horizontal overflow, no scroll hijacking, reduced motion |
+`lib/performance/tier.ts` picks between three budgets from coarse signals —
+pointer type, viewport width, reported cores, reported memory. Heuristics that
+guess harder tend to guess wrong, and the cost of guessing wrong is a phone that
+drops frames through the argument.
 
-## Notable decisions
-
-**Authored diagram geometry, not force simulation.** A causal argument reads in a
-particular order; a physics layout would scramble it on every load.
-
-**Static header, not sticky.** A fixed header over a scroll-driven narrative
-competes with the argument and steals vertical space on the devices with least to
-spare. The chapter rail already gives continuous position.
-
-**No cookies, no analytics, no consent banner.** There is nothing to consent to.
-A banner offering a choice that does not exist is theatre.
-
-**Every responsive grid declares `grid-cols-1`.** A grid with only
-`lg:grid-cols-*` has no template below `lg` and falls back to an auto-sized
-implicit column that grows to max-content — which a wide figure then pushes past
-the viewport. This caused a real mobile overflow bug; an e2e test now guards it.
+Reduced motion resolves to the low tier, because with the world no longer
+animating between states there is nothing to spend the budget on.

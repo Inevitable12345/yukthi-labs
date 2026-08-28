@@ -1,36 +1,28 @@
 import { NextResponse } from "next/server";
-
-import { getContactDelivery } from "@/lib/contact/adapter";
-import { contactSchema, fieldErrors } from "@/lib/contact/schema";
-import { rateLimit } from "@/lib/security/rate-limit";
-
-/* ============================================================================
-   CONTACT ENDPOINT (§34)
-   ----------------------------------------------------------------------------
-   Server-side validation, rate limiting, honeypot handling, and no reflection of
-   user input in any response.
-   ========================================================================== */
+import { deliver } from "@/lib/contact/deliver";
+import { contactSchema } from "@/lib/contact/schema";
+import { clientKey, consume, sweep } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
-/** Never cached, never statically analysed into a build artifact. */
 export const dynamic = "force-dynamic";
 
-function clientKey(request: Request): string {
-  // Behind a proxy the first entry of x-forwarded-for is the client. This is
-  // spoofable by a determined caller, which is why the limiter is one layer of
-  // defence rather than the only one.
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  return `contact:${ip}`;
-}
+/* ============================================================================
+   POST /api/contact  (§43)
+   ----------------------------------------------------------------------------
+   Validate, rate-limit, deliver. The response never distinguishes between a
+   submission that reached a configured endpoint and one that did not, because
+   that distinction is the operator's business and telling a caller about it
+   leaks configuration.
+   ========================================================================== */
 
 export async function POST(request: Request) {
-  const limit = rateLimit(clientKey(request), { limit: 5, windowMs: 10 * 60_000 });
+  sweep();
 
-  if (!limit.ok) {
+  const verdict = consume(clientKey(request.headers));
+  if (!verdict.ok) {
     return NextResponse.json(
-      { ok: false, message: "Too many submissions. Please try again shortly." },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+      { ok: false, error: "Too many submissions. Please try again shortly." },
+      { status: 429, headers: { "retry-after": String(verdict.resetInSeconds) } },
     );
   }
 
@@ -38,35 +30,25 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json(
-      { ok: false, message: "Could not read that submission." },
-      { status: 400 },
-    );
+    return NextResponse.json({ ok: false, error: "Malformed request." }, { status: 400 });
   }
 
   const parsed = contactSchema.safeParse(payload);
-
   if (!parsed.success) {
+    const first = parsed.error.issues[0];
     return NextResponse.json(
-      { ok: false, message: "Some fields need attention.", errors: fieldErrors(parsed.error) },
+      { ok: false, error: first?.message ?? "Please check the form and try again." },
       { status: 422 },
     );
   }
 
-  // Honeypot: accept and discard. A bot told it failed simply retries.
+  // A filled honeypot is accepted with a normal response and dropped, so an
+  // automated submitter learns nothing from the reply.
   if (parsed.data.website) {
-    return NextResponse.json({ ok: true, message: "Thank you — message received." });
+    return NextResponse.json({ ok: true }, { status: 202 });
   }
 
-  try {
-    await getContactDelivery().deliver(parsed.data);
-  } catch (error) {
-    console.error("[contact] delivery failed", error);
-    return NextResponse.json(
-      { ok: false, message: "Something went wrong sending that. Please try again." },
-      { status: 500 },
-    );
-  }
+  await deliver(parsed.data);
 
-  return NextResponse.json({ ok: true, message: "Thank you — message received." });
+  return NextResponse.json({ ok: true }, { status: 202 });
 }

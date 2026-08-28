@@ -1,154 +1,118 @@
-import { StoryChapterSection } from "@/components/story/StoryChapter";
-import { ActionLink } from "@/components/ui/ActionLink";
+"use client";
+
+import Link from "next/link";
+import { FINALE_LINES, ROOM_COPY } from "@/content/thesis";
+import { Room } from "@/components/story/Room";
 import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 import { SITE } from "@/lib/metadata/site";
+import { useChapterProgress } from "@/lib/story/use-chapter-progress";
 
 /* ============================================================================
-   CIVILIZATIONAL FINALE (§22)
+   ROOM 20 — THE CIVILIZATIONAL BET  (§28)
    ----------------------------------------------------------------------------
-   Return to the world. It is no longer merely geographic — the persistent canvas
-   behind this section is holding the futures form, branches extended.
+   The world becomes a living causal architecture, futures extend into darkness,
+   and a restrained astrolabe geometry appears behind the closing address.
 
-   Restrained celestial geometry, a slow pullback, and the mission restated. The
-   register is civilizational without mysticism: the instrument analogy is
-   historical and literal, not metaphysical.
+   The three historical lines are paced by scroll so the pauses between them are
+   real. Nothing moves quickly here; the finale earns its scale by slowing down.
    ========================================================================== */
 
-export function FinaleScene() {
-  return (
-    <StoryChapterSection
-      chapter="finale"
-      eyebrow="Ambition"
-      headline="Civilizations have always built instruments to see farther."
-      headlineClassName="max-w-[20ch]"
-    >
-      <div className="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-24">
-        <div className="space-y-8">
-          <Line>Telescopes expanded what humanity could observe.</Line>
-          <Line>Computation expanded what humanity could calculate.</Line>
-          <Line>
-            The next frontier is expanding what humanity can understand about interacting
-            systems before consequential decisions are made.
-          </Line>
+const copy = ROOM_COPY.finale;
 
-          <Astrolabe />
+export function FinaleScene() {
+  const progress = useChapterProgress("finale");
+
+  const lineStrength = (index: number) => {
+    const start = 0.12 + index * 0.14;
+    return Math.min(1, Math.max(0, (progress - start) / 0.12));
+  };
+
+  const close = Math.min(1, Math.max(0, (progress - 0.58) / 0.24));
+
+  return (
+    <Room id="finale" pinned={false} className="overflow-hidden">
+      <div className="grid gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:items-start lg:gap-20">
+        <div>
+          <InstrumentLabel>{copy.eyebrow}</InstrumentLabel>
+
+          <h2 id="finale-heading" className="display mt-6 max-w-[16ch]">
+            {copy.headline}
+          </h2>
+
+          <div className="mt-14 space-y-8">
+            {copy.body.map((line, index) => (
+              <p
+                key={line}
+                className="standfirst max-w-[46ch] text-[1.15rem]"
+                style={{
+                  opacity: lineStrength(index),
+                  transform: `translateY(${(1 - lineStrength(index)) * 10}px)`,
+                  transition: "opacity 700ms var(--ease-instrument)",
+                }}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-16">
-          <div>
-            <p className="u-display-3 text-bone">{SITE.mission}</p>
-          </div>
-
-          <div className="border-l-2 border-gold-dim pl-8">
-            <p className="font-display text-[1.5rem] leading-relaxed font-light text-bone">
-              Understand what is changing.
-              <br />
-              Reason about what comes next.
-              <br />
-              Make robust decisions before uncertainty becomes catastrophe.
-            </p>
-          </div>
-
-          <div className="border-t border-[color:var(--hairline)] pt-10">
-            <p className="u-display-2 text-bone">Yukthi Lab</p>
-
-            <nav aria-label="Continue" className="mt-12 flex flex-col gap-6">
-              <ActionLink href="/thesis" tone="gold">
-                Read the thesis
-              </ActionLink>
-              <ActionLink href="/technology">Explore the technical bet</ActionLink>
-              <ActionLink href="/evidence">See the evidence</ActionLink>
-              <ActionLink href="/contact">Talk to Yukthi</ActionLink>
-            </nav>
-          </div>
+        {/* The astrolabe holds the right of the frame while the address below it
+            scrolls past — a restrained instrument geometry, not a logo. */}
+        <div className="relative lg:sticky lg:top-[16vh] lg:self-start">
+          <svg
+            viewBox="-120 -120 240 240"
+            aria-hidden="true"
+            className="mx-auto h-auto w-full max-w-[30rem] opacity-45"
+          >
+            <g fill="none" stroke="var(--color-brass-dim)">
+              <circle cx="0" cy="0" r="104" strokeWidth="0.5" />
+              <circle cx="0" cy="0" r="76" strokeWidth="0.5" opacity="0.7" />
+              <ellipse cx="0" cy="0" rx="104" ry="34" strokeWidth="0.5" opacity="0.6" />
+              <ellipse
+                cx="0"
+                cy="0"
+                rx="34"
+                ry="104"
+                strokeWidth="0.5"
+                opacity="0.6"
+                transform={`rotate(${progress * 22})`}
+              />
+              <line x1="-104" y1="0" x2="104" y2="0" strokeWidth="0.4" opacity="0.5" />
+            </g>
+            <circle cx="74" cy="-52" r="3.4" fill="var(--color-brass)" />
+          </svg>
         </div>
       </div>
-    </StoryChapterSection>
-  );
-}
 
-function Line({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="border-b border-[color:var(--hairline)] pb-8 font-display text-[1.5rem] leading-snug font-light text-muted-bone">
-      {children}
-    </p>
-  );
-}
-
-/**
- * Restrained celestial geometry.
- *
- * An astrolabe ring: concentric graduated circles with tick marks. Static — the
- * instrument is the reference, not the animation. Purely decorative, so it is
- * hidden from assistive technology.
- */
-function Astrolabe() {
-  const size = 320;
-  const centre = size / 2;
-
-  return (
-    <div className="pt-8">
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className="w-full max-w-[20rem]"
-        aria-hidden="true"
-        focusable="false"
-      >
-        {[0.42, 0.62, 0.82, 1].map((ratio, ringIndex) => (
-          <g key={ratio}>
-            <circle
-              cx={centre}
-              cy={centre}
-              r={(size / 2 - 12) * ratio}
-              fill="none"
-              stroke="var(--hairline)"
-              strokeWidth={ringIndex === 3 ? 1 : 0.6}
-            />
-          </g>
+      <div className="mt-24 max-w-[64rem]" style={{ opacity: 0.35 + close * 0.65 }}>
+        {FINALE_LINES.map((line) => (
+          <p key={line} className="headline max-w-[24ch] text-white-hot">
+            {line}
+          </p>
         ))}
+      </div>
 
-        {/* Graduated ticks on the outer ring — the measurement face. */}
-        {Array.from({ length: 72 }, (_, i) => {
-          const angle = (i / 72) * Math.PI * 2;
-          const outer = size / 2 - 12;
-          const major = i % 6 === 0;
-          const inner = outer - (major ? 12 : 5);
-          return (
-            <line
-              key={i}
-              x1={centre + Math.cos(angle) * inner}
-              y1={centre + Math.sin(angle) * inner}
-              x2={centre + Math.cos(angle) * outer}
-              y2={centre + Math.sin(angle) * outer}
-              stroke={major ? "var(--color-gold-dim)" : "var(--hairline)"}
-              strokeWidth={major ? 1 : 0.6}
-            />
-          );
-        })}
+      <div className="mt-20 max-w-[64rem] border-t border-graphite pt-10">
+        <p className="display">Yukthi Lab</p>
+        <p className="standfirst mt-3 text-brass">{SITE.mission}</p>
 
-        {/* Two crossed rules and a single centre mark. */}
-        <line
-          x1={centre}
-          y1={16}
-          x2={centre}
-          y2={size - 16}
-          stroke="var(--hairline-faint)"
-          strokeWidth={0.6}
-        />
-        <line
-          x1={16}
-          y1={centre}
-          x2={size - 16}
-          y2={centre}
-          stroke="var(--hairline-faint)"
-          strokeWidth={0.6}
-        />
-        <circle cx={centre} cy={centre} r={3} fill="var(--color-gold)" />
-      </svg>
-
-      <InstrumentLabel as="p" className="mt-6">
-        An instrument is a commitment to seeing something before it arrives
-      </InstrumentLabel>
-    </div>
+        <nav aria-label="Continue" className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
+          {[
+            { href: "/thesis", label: "Read the thesis in full" },
+            { href: "/technology", label: "The scoped causal hypergraph" },
+            { href: "/evidence", label: "Every source, in full" },
+            { href: "/contact", label: "Contact" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="font-mono text-[0.72rem] tracking-[0.16em] uppercase text-ash underline decoration-graphite underline-offset-8 transition-colors hover:text-bone hover:decoration-brass"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </Room>
   );
 }

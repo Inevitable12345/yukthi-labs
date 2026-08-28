@@ -1,152 +1,182 @@
+import type { Metadata } from "next";
+import { CausalDiagram } from "@/components/causal/CausalDiagram";
+import { EvidenceRack } from "@/components/evidence/EvidenceRack";
+import { JsonLd, pageSchema } from "@/components/layout/JsonLd";
 import { PageShell } from "@/components/layout/PageShell";
-import { Prose } from "@/components/layout/Prose";
-import { WebPageJsonLd } from "@/components/layout/JsonLd";
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
-import { ActionLink } from "@/components/ui/ActionLink";
+import { ClaimBadge } from "@/components/ui/ClaimBadge";
+import { Hairline } from "@/components/ui/Hairline";
+import { CONVERGENCE_GRAPH, FEEDBACK_GRAPH } from "@/content/scenarios";
+import { PROOF_QUESTIONS } from "@/content/thesis";
 import { buildMetadata } from "@/lib/metadata/build-metadata";
 
-const DESCRIPTION =
-  "The open problems Yukthi has to solve, the four proof questions it expects to be held to, and the failure modes it is most worried about.";
-
-export const metadata = buildMetadata({
+export const metadata: Metadata = buildMetadata({
   title: "Research",
-  description: DESCRIPTION,
+  description:
+    "Case studies behind the Yukthi Lab thesis, the open research questions the approach has to answer, and the empirical standard it will be judged against.",
   path: "/research",
 });
 
-const OPEN_PROBLEMS = [
+const OPEN_QUESTIONS = [
   {
-    title: "Causal discovery from unstructured evidence",
-    problem:
-      "Extracting entities and relations from documents is tractable. Determining that a relation is causal rather than merely reported is not.",
-    approach:
-      "Treat extraction and causal commitment as separate steps with separate evidence requirements, and keep alternative readings attached to the relation rather than discarding them at extraction time.",
-    risk: "The failure mode is a confident graph full of associations wearing the label 'mechanism'.",
+    title: "Structure induction from evidence",
+    question:
+      "How reliably can a causal relation — with a stated mechanism — be induced from unstructured public evidence, and how is a spurious relation detected before it propagates?",
+    why: "This is the hardest technical problem in the approach. A world model that accretes plausible-looking edges is worse than no model, because it lends false structure to a decision.",
   },
   {
     title: "Scope selection",
-    problem:
-      "A scope that is too narrow misses the pathway that matters. A scope that is too wide is intractable and produces answers nobody can audit.",
-    approach:
-      "Expand scope until the answer stops changing, then stop — and record where the boundary was drawn so the omission is visible rather than silent.",
-    risk: "Boundaries are where surprises live. A scope justified after the fact is not a method.",
+    question:
+      "Given a decision, which nodes belong inside the boundary? What is the cost of a boundary drawn too tightly, versus one drawn so widely that the model is unusable?",
+    why: "Scoping is what makes the problem tractable. It is also where the model can be most wrong while looking most confident.",
   },
   {
-    title: "Calibration under structural change",
-    problem:
-      "Calibration is measured against resolved outcomes, which means it is measured against the past — the exact regime whose persistence is in question.",
-    approach:
-      "Score calibration separately within stable periods and across known breaks, and treat degradation across breaks as the metric that matters.",
-    risk: "A system that is well-calibrated in stable periods and no better than incumbents at breaks has not solved the problem it exists for.",
+    title: "Calibration without abundant outcomes",
+    question:
+      "Consequential structural breaks are rare by construction. How is a forecasting system calibrated against a small number of realised events without overfitting to them?",
+    why: "The second proof question below cannot be answered honestly until this one is.",
   },
   {
-    title: "Structural revision without thrash",
-    problem:
-      "Re-map is the distinguishing step, and it is also the dangerous one: a model that revises its structure on every contradicting observation is noise-fitting at a higher level of abstraction.",
-    approach:
-      "Require evidence to be persistent and mechanism-bearing before structure changes, and version the graph so revisions can be reviewed and reversed.",
-    risk: "Both directions fail. Too rigid and it is an extrapolative model with extra steps; too fluid and it has no memory.",
+    title: "Evidence conflict",
+    question:
+      "When two credible sources support incompatible relations, what does the model do — and how is that resolution shown to the person relying on it?",
+    why: "Hiding the conflict would forfeit the reason to trust the structure at all.",
   },
   {
-    title: "Evaluation against incumbents",
-    problem:
-      "The honest comparison is not against a naive baseline but against what a well-resourced team already does — which is usually good.",
-    approach:
-      "Evaluate on decisions where the incumbent process is documented and its output is recorded at the time, so hindsight cannot leak into the comparison.",
-    risk: "Retrospective evaluation is where causal systems most easily fool themselves and their builders.",
+    title: "Measuring earliness",
+    question:
+      "What is the counterfactual against which 'identified earlier' is measured, and who decides it?",
+    why: "Without a defensible baseline, the first proof question is unfalsifiable — and an unfalsifiable claim is not a claim.",
+  },
+];
+
+const CASES = [
+  {
+    id: "uri",
+    title: "February 2021 — coupled failure in electricity and gas",
+    graph: FEEDBACK_GRAPH,
+    finding:
+      "The joint FERC/NERC inquiry documented generation outages and gas production declines occurring together, with loss of power to gas infrastructure contributing to further reductions in gas available to generators.",
+    reading:
+      "The severity was produced by the coupling rather than by either sector's own fragility. Two sector-specific monitoring systems would each have seen a difficult but survivable problem.",
+    evidenceIds: ["ferc-nerc-uri"],
+  },
+  {
+    id: "convergence",
+    title: "Compute, electricity and materials — a live convergence",
+    graph: CONVERGENCE_GRAPH,
+    finding:
+      "The IEA reports data centre, AI and crypto electricity use at an estimated 460 TWh in 2022 with a projection above 1,000 TWh by 2026, alongside grid investment that is not keeping pace and lengthening equipment lead times.",
+    reading:
+      "No individual domain model here is wrong. The system-level question — whether compute capacity, grid capacity and material supply can be reconciled on the same timeline — is simply not any of theirs.",
+    evidenceIds: ["iea-electricity-2024", "iea-grids", "iea-critical-minerals-outlook"],
   },
 ];
 
 export default function ResearchPage() {
   return (
     <>
-      <WebPageJsonLd name="Research" description={DESCRIPTION} path="/research" />
-
       <PageShell
-        eyebrow="Research"
-        title="What Yukthi has to prove."
-        lede={
-          <>
-            These are the open problems, stated as problems. A page of solved challenges would
-            be less useful and less true.
-          </>
-        }
+        coordinate="Yukthi / Research"
+        title="Case studies and open questions"
+        standfirst="Two structures worked through in full, and the five questions the approach has to answer before it deserves to be believed."
       >
-        <div className="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-24">
-          <div>
-            <InstrumentLabel as="h2" tone="gold">
-              Open problems
-            </InstrumentLabel>
+        <div className="max-w-[64rem] space-y-16">
+          <section aria-labelledby="cases-heading">
+            <h2 id="cases-heading" className="headline">
+              Case studies
+            </h2>
 
-            <ol className="mt-10 space-y-16">
-              {OPEN_PROBLEMS.map((item, index) => (
-                <li key={item.title}>
-                  <article>
-                    <InstrumentLabel className="tabular-nums" tone="steel">
-                      {String(index + 1).padStart(2, "0")}
-                    </InstrumentLabel>
-                    <h3 className="u-display-3 mt-4 text-bone">{item.title}</h3>
+            <div className="mt-10 space-y-16">
+              {CASES.map((study) => (
+                <article key={study.id} aria-labelledby={`case-${study.id}`}>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <p className="label">Case study</p>
+                    <ClaimBadge claim="source" />
+                  </div>
+                  <h3 id={`case-${study.id}`} className="headline mt-4 text-[1.6rem]">
+                    {study.title}
+                  </h3>
 
-                    <dl className="mt-6 space-y-5">
-                      <div>
-                        <dt className="u-instrument">The problem</dt>
-                        <dd className="u-body mt-2">{item.problem}</dd>
-                      </div>
-                      <div>
-                        <dt className="u-instrument">Current approach</dt>
-                        <dd className="u-body mt-2">{item.approach}</dd>
-                      </div>
-                      <div>
-                        <dt className="u-instrument text-rupture">The failure mode</dt>
-                        <dd className="u-body mt-2">{item.risk}</dd>
-                      </div>
-                    </dl>
-                  </article>
+                  <dl className="mt-6 space-y-4">
+                    <div>
+                      <dt className="label-dim">What the source reports</dt>
+                      <dd className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-bone/88">
+                        {study.finding}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="label-dim">Yukthi&rsquo;s reading</dt>
+                      <dd className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-ash">
+                        {study.reading}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-8">
+                    <CausalDiagram graph={study.graph} />
+                  </div>
+
+                  <EvidenceRack className="mt-8" evidenceIds={study.evidenceIds} />
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <Hairline />
+
+          <section aria-labelledby="questions-heading">
+            <h2 id="questions-heading" className="headline">
+              Open research questions
+            </h2>
+            <p className="standfirst mt-4 max-w-[54ch]">
+              These are unresolved. Publishing them is not modesty — it is the only way the proof
+              questions below stay meaningful.
+            </p>
+
+            <ol className="mt-10 grid gap-px bg-graphite">
+              {OPEN_QUESTIONS.map((item, index) => (
+                <li key={item.title} className="bg-void p-6 sm:p-7">
+                  <p className="font-mono text-[0.7rem] tracking-[0.2em] uppercase text-brass">
+                    {(index + 1).toString().padStart(2, "0")} · {item.title}
+                  </p>
+                  <p className="mt-3 max-w-[62ch] font-display text-[1.05rem] leading-relaxed">
+                    {item.question}
+                  </p>
+                  <p className="mt-3 max-w-[62ch] text-[0.86rem] leading-relaxed text-ash">
+                    {item.why}
+                  </p>
                 </li>
               ))}
             </ol>
-          </div>
+          </section>
 
-          <aside className="space-y-12">
-            <div className="border border-gold-dim p-8">
-              <InstrumentLabel as="h2" tone="gold">
-                The four proof questions
-              </InstrumentLabel>
-              <ol className="mt-8 space-y-6">
-                {[
-                  "Did the system identify consequential risks earlier?",
-                  "Were its probabilities better calibrated?",
-                  "Did it reveal causal pathways existing systems missed?",
-                  "Could the user intervene before the loss occurred?",
-                ].map((question, index) => (
-                  <li key={question} className="flex gap-4">
-                    <InstrumentLabel tone="gold" className="tabular-nums">
-                      {String(index + 1).padStart(2, "0")}
-                    </InstrumentLabel>
-                    <span className="font-display text-[1.125rem] leading-snug font-light text-bone">
-                      {question}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          <Hairline />
 
-            <div className="border-t border-[color:var(--hairline)] pt-8">
-              <Prose>
-                <h3>Collaboration</h3>
-                <p>
-                  Yukthi is interested in conversations with people who have the 3 a.m. problem
-                  and the data to test against it — particularly where an incumbent process is
-                  documented well enough to make an honest comparison possible.
-                </p>
-              </Prose>
-              <ActionLink href="/contact" tone="gold" className="mt-8">
-                Talk to Yukthi
-              </ActionLink>
-            </div>
-          </aside>
+          <section aria-labelledby="standard-heading">
+            <h2 id="standard-heading" className="headline">
+              The empirical standard
+            </h2>
+            <ol className="mt-8 space-y-4">
+              {PROOF_QUESTIONS.map((question, index) => (
+                <li key={question} className="flex gap-4">
+                  <span className="font-mono text-[0.72rem] text-brass-dim">
+                    {(index + 1).toString().padStart(2, "0")}
+                  </span>
+                  <span className="font-display text-[1.15rem] leading-snug">{question}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
         </div>
       </PageShell>
+
+      <JsonLd
+        schema={pageSchema(
+          "Research",
+          "Case studies, open research questions and the empirical standard.",
+          "/research",
+        )}
+      />
     </>
   );
 }

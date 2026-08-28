@@ -1,42 +1,54 @@
 /* ============================================================================
-   SECURITY HEADERS (§34)
+   SECURITY HEADERS  (§43)
    ----------------------------------------------------------------------------
-   Exported as data rather than written inline in next.config so the policy can
-   be asserted by a unit test instead of being trusted.
+   The site ships no third-party script by default. The Content-Security-Policy
+   below is therefore deliberately narrow: it allows the application's own
+   bundles, inline styles emitted by the framework, and — only when the operator
+   configures one — a single privacy-respecting analytics origin.
    ========================================================================== */
 
-/**
- * Content Security Policy.
- *
- * `'unsafe-inline'` on style-src is required: Next injects critical CSS inline,
- * and both R3F and the font loader set inline styles on elements. Everything
- * else is locked to same-origin.
- *
- * `'unsafe-eval'` is permitted in development only — React Refresh needs it, and
- * it must never reach production.
- */
-export function contentSecurityPolicy(
-  isDevelopment = process.env.NODE_ENV !== "production",
-): string {
-  const scriptSrc = ["'self'", "'unsafe-inline'", isDevelopment ? "'unsafe-eval'" : ""]
-    .filter(Boolean)
-    .join(" ");
+/** Origin of the optional cookieless analytics script, if one is configured. */
+function analyticsOrigin(): string | null {
+  const source = process.env.NEXT_PUBLIC_ANALYTICS_SRC?.trim();
+  if (!source) return null;
+  try {
+    return new URL(source).origin;
+  } catch {
+    return null;
+  }
+}
 
-  return [
-    "default-src 'self'",
-    `script-src ${scriptSrc}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
-    "img-src 'self' data: blob:",
-    // No third-party analytics, no tag managers, no beacons.
-    "connect-src 'self'",
-    "worker-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
-  ].join("; ");
+export function contentSecurityPolicy(isDevelopment = process.env.NODE_ENV !== "production") {
+  const analytics = analyticsOrigin();
+
+  // `unsafe-inline` is required for the framework's bootstrap script and for the
+  // inline style attributes React Three Fiber writes onto the canvas element.
+  // `unsafe-eval` is development-only (React Refresh); it is absent in production.
+  const script = ["'self'", "'unsafe-inline'", isDevelopment ? "'unsafe-eval'" : null, analytics];
+
+  const directives: Record<string, (string | null)[]> = {
+    "default-src": ["'self'"],
+    "script-src": script,
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "blob:"],
+    "font-src": ["'self'", "data:"],
+    "connect-src": ["'self'", analytics, isDevelopment ? "ws:" : null],
+    "worker-src": ["'self'", "blob:"],
+    "media-src": ["'self'"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "frame-ancestors": ["'none'"],
+    "manifest-src": ["'self'"],
+    "upgrade-insecure-requests": [],
+  };
+
+  return Object.entries(directives)
+    .map(([directive, values]) => {
+      const allowed = values.filter((value): value is string => Boolean(value));
+      return allowed.length ? `${directive} ${allowed.join(" ")}` : directive;
+    })
+    .join("; ");
 }
 
 export function securityHeaders(): { key: string; value: string }[] {
@@ -45,12 +57,13 @@ export function securityHeaders(): { key: string; value: string }[] {
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-    { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-    { key: "X-DNS-Prefetch-Control", value: "off" },
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+    { key: "Origin-Agent-Cluster", value: "?1" },
     {
       key: "Permissions-Policy",
       value: "camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=()",
     },
-    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   ];
 }

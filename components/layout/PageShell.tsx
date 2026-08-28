@@ -1,31 +1,34 @@
+import type { ReactNode } from "react";
+import { Hairline } from "@/components/ui/Hairline";
 import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
 
 /**
- * The standard page frame for everything that is not the homepage narrative.
- *
- * Editorial rather than cinematic: these pages exist to be read carefully, and a
- * reader who has arrived at /evidence wants the sources, not a camera move.
+ * The shared frame for every route other than the exhibition itself. Same
+ * grid, same coordinate register, same rules — so /thesis reads as another
+ * room rather than as a different website (§44).
  */
 export function PageShell({
-  eyebrow,
+  coordinate,
   title,
-  lede,
+  standfirst,
   children,
 }: {
-  eyebrow: string;
+  coordinate: string;
   title: string;
-  lede?: React.ReactNode;
-  children: React.ReactNode;
+  standfirst?: string;
+  children: ReactNode;
 }) {
   return (
-    <div className="u-gutter py-20 sm:py-28">
-      <header className="border-b border-[color:var(--hairline)] pb-16">
-        <InstrumentLabel tone="gold">{eyebrow}</InstrumentLabel>
-        <h1 className="u-display-2 mt-6 max-w-[20ch] text-bone">{title}</h1>
-        {lede ? <div className="u-lede u-measure mt-8">{lede}</div> : null}
-      </header>
-
-      <div className="mt-20">{children}</div>
+    <div className="px-5 pt-28 sm:px-8 sm:pt-36">
+      <div className="mx-auto max-w-[86rem]">
+        <header className="max-w-[62rem]">
+          <InstrumentLabel>{coordinate}</InstrumentLabel>
+          <h1 className="display mt-5">{title}</h1>
+          {standfirst ? <p className="standfirst mt-6 max-w-[54ch]">{standfirst}</p> : null}
+        </header>
+        <Hairline className="mt-12" />
+        <div className="pt-12">{children}</div>
+      </div>
     </div>
   );
 }

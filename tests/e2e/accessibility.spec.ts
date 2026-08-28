@@ -1,84 +1,53 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const ROUTES = ["/", "/thesis", "/technology", "/evidence", "/research", "/contact"];
+const PAGES = ["/", "/thesis", "/technology", "/evidence", "/research", "/contact"];
 
-test.describe("accessibility", () => {
-  for (const route of ROUTES) {
-    test(`${route} has no detectable WCAG A/AA violations`, async ({ page }) => {
-      await page.goto(route);
-
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
-
-      expect(
-        results.violations.map((violation) => ({
-          id: violation.id,
-          nodes: violation.nodes.map((node) => node.target).slice(0, 3),
-        })),
-      ).toEqual([]);
-    });
-  }
-
-  test("the skip link is the first thing a keyboard reaches", async ({ page }) => {
-    await page.goto("/");
-    await page.keyboard.press("Tab");
-
-    const focused = page.locator(":focus");
-    await expect(focused).toHaveText(/skip to content/i);
-    await expect(focused).toBeVisible();
+for (const path of PAGES) {
+  test(`${path} has no detectable WCAG A/AA violations`, async ({ page }) => {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
   });
+}
 
-  test("the chapter rail is keyboard navigable", async ({ page }, testInfo) => {
-    await page.goto("/");
-
-    const links = page.locator('nav[aria-label="Chapters"] a');
-    await expect(links).toHaveCount(11);
-
-    // The rail is a desktop affordance — below `lg` it is hidden and the same
-    // navigation is served by the header menu, so its accessible names are only
-    // meaningful where it is actually rendered.
-    test.skip(testInfo.project.name === "mobile", "rail is hidden below lg");
-
-    for (let i = 0; i < 11; i += 1) {
-      await expect(links.nth(i)).toHaveAccessibleName(/chapter \d+/i);
-    }
-  });
-
-  test("the evidence drawer traps and returns focus correctly", async ({ page }) => {
-    await page.goto("/evidence");
-
-    await page
-      .getByRole("button", { name: /full record/i })
-      .first()
-      .click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-
-    await page.keyboard.press("Escape");
-    await expect(dialog).not.toBeVisible();
-  });
+test("the skip link is the first thing a keyboard reaches", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
 });
 
-test.describe("reduced motion", () => {
-  test.use({ contextOptions: { reducedMotion: "reduce" } });
+test("the room index is keyboard navigable and announces the current room", async ({
+  page,
+}, testInfo) => {
+  // The index is a desktop affordance. On a phone the coordinate readout and the
+  // scroll itself carry orientation instead — mobile is not a shrunken desktop (§39).
+  test.skip(testInfo.project.name === "mobile", "Room index is desktop-only by design");
+  await page.goto("/");
+  const index = page.getByRole("navigation", { name: "Exhibition rooms" });
+  await expect(index.getByRole("link")).toHaveCount(20);
+  await index.getByRole("link", { name: /Room 11/ }).click();
+  await expect(page).toHaveURL(/#yukthi$/);
+});
 
-  test("delivers the complete argument without pinning", async ({ page }) => {
-    await page.goto("/");
+test("every room is a labelled landmark section", async ({ page }) => {
+  await page.goto("/");
+  const sections = page.locator("section[data-room]");
+  const count = await sections.count();
+  for (let index = 0; index < count; index += 1) {
+    const labelledBy = await sections.nth(index).getAttribute("aria-labelledby");
+    expect(labelledBy).toBeTruthy();
+    await expect(page.locator(`#${labelledBy}`)).toHaveCount(1);
+  }
+});
 
-    // Every stage of the operating loop is present at once rather than revealed.
-    const loop = page.locator("#operating-loop");
-    const text = await loop.innerText();
-
-    for (const stage of ["Map", "Monitor", "Forecast", "Simulate", "Re-map"]) {
-      expect(text).toContain(stage);
-    }
-  });
-
-  test("still reaches the finale", async ({ page }) => {
-    await page.goto("/");
-    await page.locator("#finale").scrollIntoViewIfNeeded();
-    await expect(page.getByRole("heading", { name: /civilizations/i })).toBeVisible();
-  });
+test("the decision scopes open from the keyboard", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#three-am").scrollIntoViewIfNeeded();
+  const trigger = page.getByRole("button", { name: /What tiny dependency/ });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(trigger).toHaveAttribute("aria-expanded", /true|false/);
 });

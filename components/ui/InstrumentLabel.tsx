@@ -1,24 +1,15 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
-/** The small capitalised mono type used for chapter numbers, evidence IDs and state. */
+/** The small monospace annotation used throughout the exhibition. */
 export function InstrumentLabel({
   children,
+  dim = false,
   className,
-  tone = "dim",
-  as: Component = "span",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
+  dim?: boolean;
   className?: string;
-  tone?: "dim" | "gold" | "steel" | "rupture" | "bone";
-  as?: "span" | "p" | "div" | "h2" | "h3";
 }) {
-  const toneClass = {
-    dim: "text-dim-bone",
-    gold: "text-gold",
-    steel: "text-steel",
-    rupture: "text-rupture",
-    bone: "text-bone",
-  }[tone];
-
-  return <Component className={cn("u-instrument", toneClass, className)}>{children}</Component>;
+  return <p className={cn(dim ? "label-dim" : "label", className)}>{children}</p>;
 }

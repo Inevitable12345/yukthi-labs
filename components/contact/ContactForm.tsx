@@ -1,260 +1,171 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
-
-import { contactSchema, fieldErrors, type ContactFieldErrors } from "@/lib/contact/schema";
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
+import { useId, useState } from "react";
+import { INTENTS, contactSchema } from "@/lib/contact/schema";
 import { cn } from "@/lib/utils/cn";
 
-/* ============================================================================
-   CONTACT FORM (§33, §34)
-   ----------------------------------------------------------------------------
-   Accessibility is the substance of this component:
-     · every input has a real <label>, not a placeholder standing in for one;
-     · errors are tied to inputs with aria-describedby and aria-invalid;
-     · the status region is a live region, so success and failure are announced;
-     · on failure focus moves to the first field with an error;
-     · the submit button reports its own busy state rather than only spinning.
+type Status = "idle" | "submitting" | "sent" | "error";
 
-   The honeypot is hidden from sight and from assistive technology, and is not
-   reachable by keyboard — a screen reader user must never be asked to fill in a
-   trap field.
-   ========================================================================== */
-
-type Status =
-  | { kind: "idle" }
-  | { kind: "submitting" }
-  | { kind: "sent"; message: string }
-  | { kind: "error"; message: string };
-
+/**
+ * The contact form. Validated client-side for the reader's benefit and again on
+ * the server because client validation is a courtesy, not a control (§43).
+ *
+ * Errors are announced through a live region and the message field is wired to
+ * its hint with `aria-describedby`, so a keyboard or screen-reader visitor gets
+ * the same correction a sighted one does (§42).
+ */
 export function ContactForm() {
-  const baseId = useId();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [errors, setErrors] = useState<ContactFieldErrors>({});
-
-  const focusFirstError = (found: ContactFieldErrors) => {
-    const first = Object.keys(found)[0];
-    if (!first) return;
-    const element = formRef.current?.elements.namedItem(first);
-    if (element instanceof HTMLElement) element.focus();
-  };
+  const id = useId();
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
 
     const data = Object.fromEntries(new FormData(event.currentTarget));
     const parsed = contactSchema.safeParse(data);
-
     if (!parsed.success) {
-      const found = fieldErrors(parsed.error);
-      setErrors(found);
-      setStatus({ kind: "error", message: "Some fields need attention." });
-      focusFirstError(found);
+      setStatus("error");
+      setError(parsed.error.issues[0]?.message ?? "Please check the form.");
       return;
     }
 
-    setErrors({});
-    setStatus({ kind: "submitting" });
-
+    setStatus("submitting");
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-
-      const body = (await response.json()) as {
-        ok: boolean;
-        message: string;
-        errors?: ContactFieldErrors;
-      };
-
-      if (!response.ok || !body.ok) {
-        if (body.errors) {
-          setErrors(body.errors);
-          focusFirstError(body.errors);
-        }
-        setStatus({ kind: "error", message: body.message ?? "Something went wrong." });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        setStatus("error");
+        setError(body.error ?? "Something went wrong. Please try again.");
         return;
       }
-
-      setStatus({ kind: "sent", message: body.message });
-      formRef.current?.reset();
+      setStatus("sent");
     } catch {
-      setStatus({
-        kind: "error",
-        message: "Could not reach the server. Please try again, or email directly.",
-      });
+      setStatus("error");
+      setError("The request could not be sent. Please try again, or write to us directly.");
     }
   }
 
-  if (status.kind === "sent") {
+  if (status === "sent") {
     return (
-      <div role="status" className="border border-gold-dim p-8">
-        <InstrumentLabel tone="gold">Received</InstrumentLabel>
-        <p className="u-body mt-4">{status.message}</p>
-        <button
-          type="button"
-          onClick={() => setStatus({ kind: "idle" })}
-          className="u-instrument mt-6 border-b border-[color:var(--hairline-strong)] pb-1 transition-colors hover:border-bone hover:text-bone"
-        >
-          Send another
-        </button>
+      <div role="status" className="panel p-7">
+        <p className="label">Received</p>
+        <p className="standfirst mt-3 max-w-[44ch]">
+          Thank you. A person reads every message that arrives here.
+        </p>
       </div>
     );
   }
 
-  const busy = status.kind === "submitting";
+  const fieldClass =
+    "w-full border border-graphite bg-ink/60 px-3 py-2.5 text-[0.92rem] text-bone placeholder:text-ash focus:border-brass focus:outline-none";
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-8">
-      <Field
-        id={`${baseId}-name`}
-        name="name"
-        label="Name"
-        autoComplete="name"
-        error={errors.name}
-        required
-      />
+    <form onSubmit={onSubmit} noValidate className="relative space-y-6">
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label htmlFor={`${id}-name`} className="label-dim">
+            Name
+          </label>
+          <input
+            id={`${id}-name`}
+            name="name"
+            required
+            autoComplete="name"
+            className={cn(fieldClass, "mt-2")}
+          />
+        </div>
+        <div>
+          <label htmlFor={`${id}-email`} className="label-dim">
+            Email
+          </label>
+          <input
+            id={`${id}-email`}
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            className={cn(fieldClass, "mt-2")}
+          />
+        </div>
+      </div>
 
-      <Field
-        id={`${baseId}-email`}
-        name="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        error={errors.email}
-        required
-      />
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label htmlFor={`${id}-organization`} className="label-dim">
+            Organisation <span className="normal-case">(optional)</span>
+          </label>
+          <input
+            id={`${id}-organization`}
+            name="organization"
+            autoComplete="organization"
+            className={cn(fieldClass, "mt-2")}
+          />
+        </div>
+        <div>
+          <label htmlFor={`${id}-intent`} className="label-dim">
+            Subject
+          </label>
+          <select
+            id={`${id}-intent`}
+            name="intent"
+            defaultValue="research"
+            className={cn(fieldClass, "mt-2")}
+          >
+            {INTENTS.map((intent) => (
+              <option key={intent.value} value={intent.value}>
+                {intent.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      <Field
-        id={`${baseId}-organization`}
-        name="organization"
-        label="Organisation"
-        hint="Optional"
-        autoComplete="organization"
-        error={errors.organization}
-      />
-
-      <Field
-        id={`${baseId}-context`}
-        name="context"
-        label="What is your 3 a.m. problem?"
-        hint="The decision you are worried about, and what would have to break for it to matter."
-        error={errors.context}
-        multiline
-        required
-      />
-
-      {/* Honeypot. Hidden visually, from assistive technology, and from tab order. */}
-      <div aria-hidden="true" className="u-sr-only">
-        <label htmlFor={`${baseId}-website`}>Website</label>
-        <input
-          id={`${baseId}-website`}
-          name="website"
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
+      <div>
+        <label htmlFor={`${id}-message`} className="label-dim">
+          Message
+        </label>
+        <textarea
+          id={`${id}-message`}
+          name="message"
+          rows={7}
+          required
+          aria-describedby={`${id}-message-hint`}
+          className={cn(fieldClass, "mt-2 resize-y")}
         />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-6">
-        <button
-          type="submit"
-          disabled={busy}
-          className={cn(
-            "border px-6 py-3.5 font-mono text-[0.6875rem] tracking-[0.18em] uppercase transition-colors",
-            busy
-              ? "cursor-wait border-[color:var(--hairline)] text-dim-bone"
-              : "border-gold text-gold hover:bg-gold hover:text-void",
-          )}
-        >
-          {busy ? "Sending…" : "Send"}
-        </button>
-
-        {/* Live region: announced on both success and failure. */}
         <p
-          role="status"
-          aria-live="polite"
-          className={cn(
-            "u-instrument",
-            status.kind === "error" ? "text-rupture" : "text-dim-bone",
-          )}
+          id={`${id}-message-hint`}
+          className="mt-2 font-mono text-[0.66rem] tracking-[0.08em] text-ash"
         >
-          {status.kind === "error" ? status.message : busy ? "Sending" : ""}
+          Twenty characters minimum. Please say what you are working on — it is the only way to give
+          a useful reply.
         </p>
       </div>
-    </form>
-  );
-}
 
-function Field({
-  id,
-  name,
-  label,
-  hint,
-  error,
-  type = "text",
-  autoComplete,
-  multiline = false,
-  required = false,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  type?: string;
-  autoComplete?: string;
-  multiline?: boolean;
-  required?: boolean;
-}) {
-  const hintId = hint ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+      {/* Honeypot. Hidden from view and from assistive technology alike. */}
+      <div aria-hidden="true" className="absolute h-px w-px overflow-hidden opacity-0">
+        <label htmlFor={`${id}-website`}>Leave this field empty</label>
+        <input id={`${id}-website`} name="website" tabIndex={-1} autoComplete="off" />
+      </div>
 
-  const shared = {
-    id,
-    name,
-    autoComplete,
-    required,
-    "aria-invalid": error ? true : undefined,
-    "aria-describedby": describedBy,
-    className: cn(
-      "mt-3 w-full border bg-transparent px-4 py-3 text-[0.9375rem] text-bone transition-colors",
-      "placeholder:text-dim-bone focus:outline-none",
-      error
-        ? "border-rupture focus:border-rupture"
-        : "border-[color:var(--hairline)] focus:border-gold",
-    ),
-  } as const;
-
-  return (
-    <div>
-      <label htmlFor={id} className="u-instrument text-bone">
-        {label}
-        {required ? (
-          <span className="text-gold" aria-hidden="true">
-            {" "}
-            *
-          </span>
+      <div aria-live="polite" className="min-h-[1.5rem]">
+        {error ? (
+          <p className="font-mono text-[0.72rem] tracking-[0.08em] text-rupture">{error}</p>
         ) : null}
-      </label>
+      </div>
 
-      {hint ? (
-        <p id={hintId} className="u-body mt-2 text-[0.8125rem]">
-          {hint}
-        </p>
-      ) : null}
-
-      {multiline ? <textarea {...shared} rows={6} /> : <input {...shared} type={type} />}
-
-      {error ? (
-        <p id={errorId} className="u-instrument mt-2 text-rupture">
-          {error}
-        </p>
-      ) : null}
-    </div>
+      <button
+        type="submit"
+        disabled={status === "submitting"}
+        className="border border-brass px-6 py-3 font-mono text-[0.72rem] tracking-[0.2em] uppercase text-brass transition-colors hover:bg-brass hover:text-void disabled:opacity-50"
+      >
+        {status === "submitting" ? "Sending…" : "Send"}
+      </button>
+    </form>
   );
 }

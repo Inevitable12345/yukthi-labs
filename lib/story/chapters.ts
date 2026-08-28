@@ -1,245 +1,326 @@
 /* ============================================================================
-   STORY CHAPTERS
+   EXHIBITION STRUCTURE  (§3, §31)
    ----------------------------------------------------------------------------
-   The single ordered definition of the argument. Everything downstream — the
-   scroll orchestration, the chapter rail, the WebGL world state and the DOM copy
-   — reads from this list. There is no second place where chapter order lives.
+   One ordered definition of the argument. Scroll orchestration, the coordinate
+   readout, the WebGL world and every piece of DOM copy read from this list.
+   There is no second place where room order lives.
+
+   A note on numbering. The brief's coordinate system (§3) lists an OBSERVATORY
+   entry, twenty numbered rooms and an EPILOGUE; its chapter union (§31) omits
+   `world-model`, which §3 numbers as room 12 and §18 describes in full. The
+   coordinate list is the visitor-facing contract — `ROOM 12 / 20` has to mean
+   something — so `world-model` is present here and the two are reconciled.
    ========================================================================== */
 
-/** §27. The deterministic chapter union. */
-export type StoryChapter =
+export type Chapter =
+  | "observatory"
   | "stability"
   | "rupture"
-  | "rare-earth"
-  | "semiconductor"
+  | "chokepoint"
+  | "cascade"
   | "structural-break"
   | "feedback"
-  | "coming-decade"
+  | "convergence"
+  | "old-tools"
+  | "gap"
   | "ai"
   | "yukthi"
-  | "operating-loop"
-  | "decision-scopes"
+  | "world-model"
+  | "map"
+  | "monitor"
+  | "forecast"
+  | "simulate"
+  | "remap"
+  | "decisions"
   | "investment"
   | "finale";
 
 /**
- * The eight forms the Causal World takes (§5).
+ * The eight forms the persistent world instrument takes (§5).
  *
- * The world is one continuous instrument; these are the representations it
- * resolves into. The transformation that carries the whole argument is
- * `chokepoint → causal-graph`: the moment geography stops being the organising
- * principle and causal relation takes over.
+ * It is one object throughout. These are the representations it resolves into,
+ * and the transformation that carries the whole argument is
+ * `fragmented-network → causal-graph`: the moment geography stops being the
+ * organising principle and causal relation takes over.
  */
 export type WorldForm =
-  | "earth"
+  | "abstract"
+  | "planet"
   | "global-network"
   | "fragmented-network"
-  | "chokepoint"
   | "causal-graph"
   | "hypergraph"
   | "world-model"
   | "futures";
 
-/** §24. Camera grammar — movement communicates intellectual scale, not spectacle. */
+/** Camera grammar (§35). Movement communicates scale of attention, not spectacle. */
 export type CameraMode =
-  /** Global argument. The whole system, held at a distance. */
+  /** The whole system, held at a distance. */
   | "far"
-  /** Chokepoint. One node, close enough to read its mechanism. */
-  | "close"
-  /** Interaction. A layered orbit that shows depth between strata. */
-  | "orbit"
-  /** Structural break. The world flattens into an analytical plane. */
-  | "flatten"
-  /** The reveal. Abstract graph space, no horizon. */
+  /** One node, close enough to read its mechanism. */
+  | "macro"
+  /** Inside the network, depth between strata visible. */
+  | "deep"
+  /** The world flattened into an analytical plane. */
+  | "flat"
+  /** Abstract graph space. No horizon. */
   | "abstract"
-  /** Finale. A slow pullback that never quite returns to where it began. */
+  /** A single decision scope, everything else dimmed. */
+  | "focus"
+  /** A slow withdrawal that never quite returns to where it began. */
   | "pullback";
 
-export type ChapterDefinition = {
-  id: StoryChapter;
-  /** Rail number. Several chapters can share a rail entry; see RAIL below. */
-  index: number;
-  /** Short name for the chapter rail (§25). */
-  railLabel: string;
-  /** Accessible name announced when the chapter becomes current. */
+export type RoomDefinition = {
+  id: Chapter;
+  /** Displayed coordinate. `null` for the observatory, which precedes room 01. */
+  room: number | null;
+  /** Short name in the coordinate readout and room index. */
+  label: string;
+  /** Accessible name announced when the room becomes current. */
   title: string;
-  /** DOM id of the section. Anchors, skip links and ScrollTrigger all use it. */
+  /** DOM id. Anchors, the room index and the scroll driver all use it. */
   domId: string;
   world: WorldForm;
   camera: CameraMode;
   /**
-   * Whether this chapter pins its scene while its timeline scrubs.
-   * Pinning is expensive and disorienting when overused — it is reserved for
-   * chapters whose content is a transformation rather than a statement.
+   * Rooms whose content is a transformation rather than a statement hold the
+   * viewport while their timeline scrubs. Pinning is disorienting when
+   * overused, so it is spent carefully.
    */
-  pinned: boolean;
+  held: boolean;
 };
 
-export const CHAPTERS: readonly ChapterDefinition[] = [
+export const ROOMS: readonly RoomDefinition[] = [
+  {
+    id: "observatory",
+    room: null,
+    label: "Observatory",
+    title: "Observatory",
+    domId: "observatory",
+    world: "abstract",
+    camera: "far",
+    held: true,
+  },
   {
     id: "stability",
-    index: 1,
-    railLabel: "Stability",
-    title: "The world we built for",
-    domId: "stability",
-    world: "earth",
+    room: 1,
+    label: "The stable world",
+    title: "The world we inherited",
+    domId: "stable-world",
+    world: "planet",
     camera: "far",
-    pinned: false,
+    held: false,
   },
   {
     id: "rupture",
-    index: 2,
-    railLabel: "Rupture",
+    room: 2,
+    label: "Rupture",
     title: "The structure began to change",
     domId: "rupture",
     world: "fragmented-network",
-    camera: "orbit",
-    pinned: true,
+    camera: "deep",
+    held: false,
   },
   {
-    id: "rare-earth",
-    index: 3,
-    railLabel: "Chokepoint",
+    id: "chokepoint",
+    room: 3,
+    label: "Chokepoint",
     title: "The chokepoint",
-    domId: "rare-earth",
-    world: "chokepoint",
-    camera: "close",
-    pinned: true,
+    domId: "chokepoint",
+    world: "fragmented-network",
+    camera: "macro",
+    held: false,
   },
   {
-    id: "semiconductor",
-    index: 4,
-    railLabel: "Cascade",
-    title: "Reality is not a chain",
-    domId: "semiconductor",
+    id: "cascade",
+    room: 4,
+    label: "Cascade",
+    title: "Cascade",
+    domId: "cascade",
     world: "causal-graph",
-    camera: "orbit",
-    pinned: true,
+    camera: "deep",
+    held: false,
   },
   {
     id: "structural-break",
-    index: 5,
-    railLabel: "Break",
-    title: "Structural break",
+    room: 5,
+    label: "Structural break",
+    title: "Reality is not a line",
     domId: "structural-break",
     world: "causal-graph",
-    camera: "flatten",
-    pinned: false,
+    camera: "flat",
+    held: false,
   },
   {
     id: "feedback",
-    index: 6,
-    railLabel: "Interaction",
+    room: 6,
+    label: "Feedback",
     title: "Feedback",
     domId: "feedback",
     world: "causal-graph",
-    camera: "orbit",
-    pinned: false,
+    camera: "deep",
+    held: false,
   },
   {
-    id: "coming-decade",
-    index: 7,
-    railLabel: "Why now",
-    title: "The coming decade",
-    domId: "coming-decade",
+    id: "convergence",
+    room: 7,
+    label: "Convergence",
+    title: "Interacting systems",
+    domId: "convergence",
     world: "hypergraph",
     camera: "far",
-    pinned: false,
+    held: false,
+  },
+  {
+    id: "old-tools",
+    room: 8,
+    label: "The old instruments",
+    title: "The old instruments",
+    domId: "old-instruments",
+    world: "hypergraph",
+    camera: "flat",
+    held: false,
+  },
+  {
+    id: "gap",
+    room: 9,
+    label: "The gap",
+    title: "The gap",
+    domId: "the-gap",
+    world: "hypergraph",
+    camera: "flat",
+    held: false,
   },
   {
     id: "ai",
-    index: 7,
-    railLabel: "Why now",
+    room: 10,
+    label: "Why now",
     title: "Why AI changes what is possible",
-    domId: "ai",
+    domId: "why-now",
     world: "hypergraph",
-    camera: "orbit",
-    pinned: false,
+    camera: "deep",
+    held: false,
   },
   {
     id: "yukthi",
-    index: 8,
-    railLabel: "The bet",
-    title: "The technical bet",
+    room: 11,
+    label: "Yukthi",
+    title: "Yukthi",
     domId: "yukthi",
     world: "hypergraph",
     camera: "abstract",
-    pinned: true,
+    held: true,
   },
   {
-    id: "operating-loop",
-    index: 9,
-    railLabel: "World model",
-    title: "The operating loop",
-    domId: "operating-loop",
+    id: "world-model",
+    room: 12,
+    label: "The world model",
+    title: "What scoped means",
+    domId: "world-model",
+    world: "world-model",
+    camera: "focus",
+    held: false,
+  },
+  {
+    id: "map",
+    room: 13,
+    label: "Map",
+    title: "Map",
+    domId: "map",
     world: "world-model",
     camera: "abstract",
-    pinned: true,
+    held: true,
   },
   {
-    id: "decision-scopes",
-    index: 10,
-    railLabel: "Decisions",
-    title: "The 3 a.m. problems",
-    domId: "decision-scopes",
+    id: "monitor",
+    room: 14,
+    label: "Monitor",
+    title: "Monitor",
+    domId: "monitor",
     world: "world-model",
-    camera: "orbit",
-    pinned: false,
+    camera: "abstract",
+    held: true,
+  },
+  {
+    id: "forecast",
+    room: 15,
+    label: "Forecast",
+    title: "Forecast",
+    domId: "forecast",
+    world: "futures",
+    camera: "abstract",
+    held: true,
+  },
+  {
+    id: "simulate",
+    room: 16,
+    label: "Simulate",
+    title: "Simulate",
+    domId: "simulate",
+    world: "world-model",
+    camera: "focus",
+    held: false,
+  },
+  {
+    id: "remap",
+    room: 17,
+    label: "Re-map",
+    title: "Re-map",
+    domId: "remap",
+    world: "world-model",
+    camera: "abstract",
+    held: true,
+  },
+  {
+    id: "decisions",
+    room: 18,
+    label: "The 3 a.m. problem",
+    title: "The 3 a.m. problem",
+    domId: "three-am",
+    world: "world-model",
+    camera: "focus",
+    held: false,
   },
   {
     id: "investment",
-    index: 10,
-    railLabel: "Decisions",
+    room: 19,
+    label: "The bet",
     title: "The investment bet",
     domId: "investment",
     world: "world-model",
     camera: "far",
-    pinned: false,
+    held: false,
   },
   {
     id: "finale",
-    index: 11,
-    railLabel: "Ambition",
-    title: "Civilizational ambition",
+    room: 20,
+    label: "Civilizational",
+    title: "The civilizational bet",
     domId: "finale",
     world: "futures",
     camera: "pullback",
-    pinned: false,
+    held: false,
   },
 ] as const;
 
-export const CHAPTER_IDS: readonly StoryChapter[] = CHAPTERS.map((chapter) => chapter.id);
+export const ROOM_COUNT = ROOMS.filter((room) => room.room !== null).length;
 
-export const CHAPTER_BY_ID: Record<StoryChapter, ChapterDefinition> = Object.fromEntries(
-  CHAPTERS.map((chapter) => [chapter.id, chapter]),
-) as Record<StoryChapter, ChapterDefinition>;
+export const CHAPTER_IDS: readonly Chapter[] = ROOMS.map((room) => room.id);
 
-/**
- * The chapter rail (§25): eleven entries, deduplicated from thirteen chapters.
- *
- * Two pairs of chapters share a rail position because they are one movement of
- * the argument told in two scenes — the reader should not feel the rail tick
- * twice for a single idea.
- */
-export const RAIL: readonly { index: number; label: string; chapters: StoryChapter[] }[] =
-  CHAPTERS.reduce<{ index: number; label: string; chapters: StoryChapter[] }[]>(
-    (accumulator, chapter) => {
-      const existing = accumulator.find((entry) => entry.index === chapter.index);
-      if (existing) {
-        existing.chapters.push(chapter.id);
-        return accumulator;
-      }
-      accumulator.push({
-        index: chapter.index,
-        label: chapter.railLabel,
-        chapters: [chapter.id],
-      });
-      return accumulator;
-    },
-    [],
-  );
+export const ROOM_BY_ID = Object.fromEntries(ROOMS.map((room) => [room.id, room])) as Record<
+  Chapter,
+  RoomDefinition
+>;
 
-/** Zero-padded rail numeral: `01`, `02`, … Used verbatim in the DOM. */
-export function railNumeral(index: number): string {
-  return index.toString().padStart(2, "0");
+/** Zero-padded coordinate: `01`, `12`, `20`. Rendered verbatim in the DOM. */
+export function coordinate(room: number | null): string {
+  return room === null ? "—" : room.toString().padStart(2, "0");
+}
+
+/** `YUKTHI / OBSERVATORY / 12` — the persistent architectural readout (§3). */
+export function coordinateLine(id: Chapter): string {
+  const room = ROOM_BY_ID[id];
+  return room.room === null
+    ? "YUKTHI / OBSERVATORY"
+    : `YUKTHI / OBSERVATORY / ${coordinate(room.room)}`;
 }

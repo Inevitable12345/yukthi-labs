@@ -1,125 +1,214 @@
 # Yukthi Lab
 
-**Bring certainty to an increasingly unstable world.**
+> **Bring certainty to an increasingly unstable world.**
 
-A production Next.js application that presents Yukthi Lab's thesis as an
-interactive argument rather than a landing page. The visitor scrolls through
-thirteen chapters while a persistent WebGL instrument transforms from an abstract
-globe into a causal hypergraph — because that transformation _is_ the argument.
+An immersive civilizational thesis, built as an exhibition rather than a landing
+page. Twenty rooms carry one argument: the world's structure changed, the
+existing analytical toolkit is insufficient _in combination_, and the missing
+layer is an explicit, continuously updated causal structure — a **Scoped Causal
+Hypergraph-based World Model**.
 
-The technical bet: a **Scoped Causal Hypergraph-based World Model**.
-The operating loop: **Map → Monitor → Forecast → Simulate → Re-map**.
+```
+MAP → MONITOR → FORECAST → SIMULATE → RE-MAP
+```
 
 ---
 
-## Quick start
+## What this repository contains
+
+| Route         | What it is                                                         |
+| ------------- | ------------------------------------------------------------------ |
+| `/`           | The exhibition. Twenty rooms and an observatory, in argument order |
+| `/thesis`     | The same argument as long-form prose, with every source attached   |
+| `/technology` | What the scoped causal hypergraph is, and what it is not           |
+| `/evidence`   | Every source, with claim and interpretation kept apart             |
+| `/research`   | Two worked case studies and five open research questions           |
+| `/contact`    | Institutional contact                                              |
+| `/privacy`    | What the site collects — a short page, because the answer is short |
+
+---
+
+## The rules this site is built under
+
+These are not aspirations; several are enforced by tests.
+
+- **No invented facts.** Every figure on the site is one its named source
+  reports. Where a number is a third party's estimate rather than a measurement,
+  the record says so.
+- **No fabricated citations or links.** A record carries a `url` only where a
+  stable published address is known; otherwise it carries a `locator` naming the
+  publisher and document precisely enough to find. A link that might rot into a
+  404 is worse than no link.
+- **Four kinds of statement never blur.** Source fact, Yukthi interpretation,
+  illustrative scenario and product ambition each carry a visible class
+  (`lib/graph/types.ts`), printed next to the claim.
+- **No probabilities.** None are published anywhere, because none have been
+  earned. `tests/unit/evidence.test.ts` fails the build if one appears.
+- **No customers, pilots, revenue, partnerships, patents, market size or
+  investment status** are claimed, because none can be substantiated.
+- **The argument works without WebGL, without JavaScript, and without motion.**
+  See _Degradation_, below.
+
+---
+
+## Getting started
 
 ```bash
-npm ci
-npm run dev          # http://localhost:3000
+npm install
+cp .env.example .env.local     # optional; sensible defaults without it
+npm run dev                    # http://localhost:3000
 ```
 
-Verify everything before shipping:
+Node 20.9+ (22.x recommended).
 
-```bash
-npm run verify       # lint → typecheck → unit tests → production build
-npm run test:e2e     # Playwright, desktop + mobile, including axe WCAG checks
+### Scripts
+
+| Command                | What it does                                            |
+| ---------------------- | ------------------------------------------------------- |
+| `npm run dev`          | Development server                                      |
+| `npm run build`        | Production build                                        |
+| `npm run start`        | Serve the production build                              |
+| `npm run lint`         | ESLint, including the React compiler rules              |
+| `npm run typecheck`    | `tsc --noEmit`, strict, with `noUncheckedIndexedAccess` |
+| `npm test`             | Unit and component tests (Vitest)                       |
+| `npm run test:e2e`     | Browser tests, desktop and mobile (Playwright + axe)    |
+| `npm run format:check` | Prettier                                                |
+| `npm run verify`       | All of the above, in the order CI should run them       |
+
+`npm run test:e2e` builds nothing itself — run `npm run build` first, since the
+Playwright config starts `npm run start`.
+
+---
+
+## Architecture
+
+```
+app/                    Routes. Every page is a server component; the
+                        argument is in the initial HTML.
+components/
+  story/                Room shell, scroll driver, coordinate readout, index
+  scenes/               One component per room
+  world/                The persistent WebGL instrument and its fallback
+  causal/               Hypergraph diagram, the reveal, the simulator
+  evidence/             The inspector and the library
+  scope/                The scope lens
+  ui/  layout/  brand/  Primitives
+content/
+  thesis.ts             Every word the exhibition speaks, keyed by room
+  evidence.ts           The evidence library
+  scenarios.ts          Causal graphs and the illustrative scenario
+  decisions.ts          The six 3 a.m. decision scopes
+lib/
+  story/                Room definitions and deterministic story state
+  graph/                Causal data model, traversal, deterministic layout
+  world/                Form geometry, camera grammar, seeded random
+  performance/          Device tiers and the WebGL probe
+  accessibility/        Reduced motion, intersection
+  security/             CSP, headers, rate limiting
+  contact/              Submission schema and delivery
 ```
 
-## Scripts
+### How the story state works
 
-| Script            | Does                                                    |
-| ----------------- | ------------------------------------------------------- |
-| `dev`             | Development server                                      |
-| `build` / `start` | Production build and serve                              |
-| `lint`            | ESLint (flat config)                                    |
-| `typecheck`       | `tsc --noEmit`, strict, with `noUncheckedIndexedAccess` |
-| `test`            | Vitest — 94 unit and component tests                    |
-| `test:e2e`        | Playwright — 73 tests across desktop and mobile         |
-| `verify`          | The gate: lint, typecheck, test, build                  |
-| `format`          | Prettier                                                |
+`ScrollTrigger` writes two numbers into a store outside React: which room holds
+the viewport, and how far through it the visitor is. Nothing is animated from
+that file.
 
-## Routes
+- **Chapter changes** are rare and everyone cares → a React subscription.
+- **Progress** changes every scroll frame → plain reads. WebGL reads it in
+  `useFrame`; the few scrubbed DOM scenes poll through `useChapterProgress`.
 
-| Route                | Purpose                                                                |
-| -------------------- | ---------------------------------------------------------------------- |
-| `/`                  | The argument. Thirteen chapters, one persistent causal world.          |
-| `/thesis`            | The same argument as a long-form essay.                                |
-| `/technology`        | What "Scoped Causal Hypergraph-based World Model" means, term by term. |
-| `/evidence`          | Every source behind every claim, with what each figure does not say.   |
-| `/research`          | Open problems and the four proof questions.                            |
-| `/contact`           | Validated, rate-limited contact flow.                                  |
-| `/privacy`, `/terms` | Legal. Short, because there is little to describe.                     |
+The store holds a _position_, not a playhead, so reverse scroll is not a special
+case and a fast scroll never queues a backlog of animation.
 
-## Stack
+Rooms are held with CSS `position: sticky` rather than ScrollTrigger's pin.
+Sticky does not clone or re-parent the element, so focus order, anchor links and
+the accessibility tree stay exactly as authored.
 
-Next.js 16 · React 19 · TypeScript (strict) · Three.js + React Three Fiber ·
-GSAP + ScrollTrigger · Tailwind CSS v4 · Zod · Vitest · Playwright
+### How the world instrument works
 
-## How it works
+One point cloud and one relation mesh for the whole exhibition. When the room
+changes, current positions become the origin of the next morph and the target
+buffer is rewritten — the object is continuously the same object, and the
+transformation is what the visitor watches.
 
-Three documents cover the design:
+Geometry (`lib/world/forms.ts`) is a pure function of `(form, index, count)`, so
+it is identical on every reload, testable without a renderer, and — crucially —
+renders in two pipelines: the WebGL particle system and the SVG fallback.
 
-- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — the story state machine,
-  the eight world forms, progressive enhancement, and why the ESLint config makes
-  exactly one scoped exception.
-- **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** — build, environment, and the
-  **two things to configure before production**.
-- **[`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md)** — licences, including a note
-  on GSAP's licence being non-OSI.
+Relations crossfade rather than morph. Their topology genuinely differs between
+forms (a causal layer is not a trade route), and interpolating between two
+different meanings would produce a third that means nothing.
 
-The short version: there is one set of nodes, each holding a position in eight
-different layouts. The world interpolates between two of them every frame. The
-globe at the start and the hypergraph at the end are literally the same object,
-which is the claim the site is making.
+---
 
-## Two things to configure before production
+## Degradation
 
-1. **`NEXT_PUBLIC_SITE_URL`** — otherwise canonical URLs point at localhost.
-2. **Contact delivery** — `lib/contact/adapter.ts` ships a logging
-   implementation. Submissions are validated, rate limited and logged, but **not
-   emailed**. Implement `ContactDelivery` for your provider.
+| Condition                    | What happens                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **No WebGL**                 | The SVG fallback world renders the same geometry. Never a blank canvas. Covered by `tests/e2e/no-webgl.spec.ts`                                                          |
+| **No JavaScript**            | Every room's text, ladders, diagrams-as-text and evidence are in the initial HTML. Reveals are visible by default and only hidden under `@media (scripting: enabled)`    |
+| **`prefers-reduced-motion`** | Camera travel, orbit and parallax stop; morphs become discrete transitions; the scenario shows all waves at once. Diagrams, text, evidence and interaction are untouched |
+| **Low-end device**           | Three performance tiers pick particle count, relation count and DPR ceiling. Mobile reduces density and camera movement rather than shrinking the desktop layout         |
+| **Narrow viewport**          | The room index (a desktop affordance) is dropped; the coordinate readout and the scroll carry orientation                                                                |
 
-Also read the note in `docs/DEPLOYMENT.md` about the in-memory rate limiter
-becoming per-instance on serverless hosting.
-
-## Editorial rules this codebase enforces
-
-These are enforced by tests and types, not by intention:
-
-- **Every causal relation carries a mechanism.** A relation without one is an
-  association wearing a causal label. Required by the schema.
-- **No scenario contains a probability.** A test serialises the scenario data and
-  fails if one appears. A fabricated probability is worse than none, because it
-  invites the reliance it cannot support.
-- **Every claim declares its epistemic class** — observed fact, source claim,
-  Yukthi interpretation, illustrative scenario, or product ambition — and they
-  render distinctly.
-- **Every evidence record states what its figure does not say.** A number without
-  its limits is a misquotation.
-- **Unverified sources are labelled**, everywhere they appear, rather than
-  quietly omitted.
-- **Nothing is fabricated.** There are no customers, pilots, traction figures,
-  accuracy claims, partnerships or market sizes on this site, because none exist.
-  Publishing them would contradict the argument the site makes about evidence.
+---
 
 ## Accessibility
 
-The complete argument is static HTML. An end-to-end test runs with JavaScript
-disabled and asserts the thesis, evidence and conclusion all survive.
+Checked by `@axe-core/playwright` against WCAG 2.1 A and AA on every route, in
+both desktop and mobile viewports, as part of `npm run test:e2e`.
 
-Every route passes axe WCAG 2.1 A/AA with zero violations, on desktop and mobile.
-Reduced motion is a first-class path, not a fallback: pinning is disabled, the
-frameloop runs on demand, and all content is present at once.
+Beyond the automated check:
 
-## Content sources
+- Every room is a `<section>` with an accessible name from the exhibition
+  structure, so the document outline reads as the argument.
+- Nothing essential lives only inside a graphic. Every causal diagram publishes
+  its complete structure as text beside itself.
+- Text contrast is never animated. Where a scene shows arrival or activation, it
+  does so with colour, position or a graphic element — never by making words
+  harder to read.
+- The evidence inspector is a disclosure, not a modal: no focus trap, no scroll
+  lock, and the opened record sits in reading order right after its trigger.
+- Horizontally scrollable regions are focusable and named.
+- No information is conveyed by hover alone.
 
-Seventeen evidence records from the IMF, WTO, WEF, IEA, CSIS, FERC/NERC, the ECB,
-AlixPartners, Swiss Re and peer-reviewed forecasting research. Fifteen verified
-against the cited publication; two labelled unverified wherever they appear.
+---
 
-## Licence
+## Security and privacy
 
-Source code: MIT. Written content and evidence characterisations: © Yukthi Lab.
-Cited documents remain the property of their publishers — see
-[`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md).
+- A narrow Content-Security-Policy (`lib/security/headers.ts`). The site loads no
+  remote fonts, no third-party stylesheets and no external assets, so
+  `default-src 'self'` is nearly the whole policy. `unsafe-eval` is
+  development-only.
+- `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, a strict
+  `Referrer-Policy`, `Permissions-Policy` and HSTS.
+- No cookies, no local storage, no fingerprinting. Analytics is opt-in via
+  environment variable and, when enabled, cookieless.
+- The contact endpoint validates with Zod on the server (the client's validation
+  is a courtesy, not a control), rate-limits per address, and carries a honeypot
+  that returns a normal response so an automated submitter learns nothing.
+- No secret is ever read on the client. Only `NEXT_PUBLIC_*` reaches the browser.
+
+Run `npm audit` before a release.
+
+---
+
+## Deployment
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Vercel (recommended),
+Docker and self-hosted Node.
+
+Further reading: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** and
+**[docs/ATTRIBUTION.md](docs/ATTRIBUTION.md)**.
+
+---
+
+## Licence and attribution
+
+Application code in this repository is available under the MIT licence
+(`LICENSE`). The Yukthi Lab name, wordmark and thesis text are not.
+
+Third-party dependencies and the public documentation consulted while building
+the scroll and WebGL techniques are credited in `docs/ATTRIBUTION.md`. No
+external site's visual identity, assets or code were copied.

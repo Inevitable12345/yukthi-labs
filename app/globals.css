@@ -1,356 +1,266 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   YUKTHI LAB — DESIGN TOKENS (§4)
+   YUKTHI LAB — DESIGN TOKENS
    ----------------------------------------------------------------------------
-   The palette is semantic, not decorative. Each colour means one thing and is
-   used for nothing else:
+   The palette is a dark room with two instrument lights. Brass is the reading
+   colour — labels, coordinates, the marks the instrument itself makes. Signal
+   is the causal colour — relations, propagation, the thing being observed.
+   Rupture is the third, and it is rationed: it appears only where the argument
+   is about something breaking.
 
-     obsidian / deep field   the environment the argument stands in
-     warm ivory (bone)       the human-readable knowledge layer
-     mineral grey            supporting structure, secondary type
-     steel / evidence blue   evidence, state, computation
-     oxidized bronze (gold)  causal emphasis and mission. never a highlighter
-     rupture red             structural break and discontinuity. rare by rule
-
-   Explicitly rejected: neon cyberpunk, purple SaaS gradients, crypto-globe
-   aesthetics, heavy glassmorphism, gaming HUDs, generic glowing networks.
+   Type is a serif for argument, a sans for interface and a monospace for
+   coordinates and mechanism ladders. All three are system stacks. The site
+   loads no remote font, which keeps the connect-src policy in §43 as narrow as
+   it looks and removes a render-blocking network dependency from a page whose
+   first job is to be readable.
    ========================================================================== */
 
 @theme {
-  --color-void: #070808;
-  --color-deep-field: #0c0e0f;
-  --color-substrate: #121516;
-  --color-mineral: #1a1e20;
+  --color-void: #05070a;
+  --color-ink: #0a0d12;
+  --color-slate: #121722;
+  --color-graphite: #232a35;
+  --color-ash: #9aa2ae;
+  --color-bone: #e7e3da;
+  --color-white-hot: #fbf9f5;
+  --color-brass: #c8a45c;
+  --color-brass-dim: #9a7f4a;
+  --color-signal: #7fb3c4;
+  --color-signal-dim: #5f8b99;
+  --color-rupture: #d9694c;
 
-  --color-bone: #ece7dc;
-  --color-muted-bone: #aaa59c;
-  /* 5.2:1 on --void. Chosen by measurement: the warmer grey that read better
-     measured 3.8:1 and failed AA for the small mono type it is used on. */
-  --color-dim-bone: #85827a;
-
-  --color-gold: #bba36a;
-  --color-gold-dim: #7d6c45;
-  --color-steel: #7d98a7;
-  --color-steel-dim: #4a5c66;
-  --color-rupture: #c9695f;
-  --color-rupture-deep: #a04d45;
+  /* Contrast note: every colour used for text clears 4.5:1 against --color-void
+     at the 10–11px sizes the monospace labels use. The dim variants exist for
+     hierarchy, not for whispering — anything quieter would fail WCAG AA and,
+     more to the point, would be unreadable (§42). */
 
   --font-display:
-    var(--font-cormorant), "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype",
-    Palatino, "Times New Roman", serif;
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman",
+    serif;
   --font-sans:
-    var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
   --font-mono:
-    var(--font-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
-    monospace;
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  --breakpoint-xs: 24rem;
+  --text-display: clamp(2.6rem, 6vw, 5.2rem);
+  --text-headline: clamp(1.9rem, 3.6vw, 3.2rem);
+  --text-standfirst: clamp(1.1rem, 1.6vw, 1.45rem);
 
-  --ease-instrument: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-settle: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-instrument: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-@layer theme {
-  :root {
-    --hairline: rgba(236, 231, 220, 0.14);
-    --hairline-strong: rgba(236, 231, 220, 0.26);
-    --hairline-faint: rgba(236, 231, 220, 0.07);
+/* ---------------------------------------------------------------- base ---- */
 
-    /* Editorial measure. The thesis is meant to be read, not scanned. */
-    --measure: 34rem;
-    --gutter: clamp(1.25rem, 5vw, 6rem);
-    --rail-width: 3.25rem;
-  }
+:root {
+  color-scheme: dark;
 }
 
-/* ============================================================================
-   BASE
-   ========================================================================== */
-
-@layer base {
-  * {
-    border-color: var(--hairline);
-  }
-
-  html {
-    -webkit-text-size-adjust: 100%;
-    color-scheme: dark;
-    /* No smooth-scroll: ScrollTrigger owns scroll position, and CSS smoothing
-       fights it on anchor navigation. */
-  }
-
-  body {
-    background-color: var(--color-void);
-    color: var(--color-bone);
-    font-family: var(--font-sans);
-    font-feature-settings: "kern", "liga", "calt";
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-    text-rendering: optimizeLegibility;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    text-wrap: balance;
-  }
-
-  p {
-    text-wrap: pretty;
-  }
-
-  /* Visible, high-contrast focus. Never removed, only shaped. */
-  :focus-visible {
-    outline: 2px solid var(--color-gold);
-    outline-offset: 3px;
-    border-radius: 1px;
-  }
-
-  ::selection {
-    background: rgba(187, 163, 106, 0.28);
-    color: var(--color-bone);
-  }
-
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--color-void);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(236, 231, 220, 0.12);
-    border: 3px solid var(--color-void);
-    border-radius: 99px;
-  }
-
-  svg text {
-    font-family: var(--font-mono);
-  }
+html {
+  scroll-behavior: smooth;
+  /* The coordinate readout is fixed; anchored rooms must clear it. */
+  scroll-padding-top: 5.5rem;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* ============================================================================
-   UTILITIES
-   ========================================================================== */
-
-@layer utilities {
-  .u-gutter {
-    padding-inline: var(--gutter);
-  }
-
-  .u-measure {
-    max-width: var(--measure);
-  }
-
-  /* Instrument label: the small capitalised mono type used for coordinates,
-     evidence IDs, chapter numbers and system state. */
-  .u-instrument {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    line-height: 1.2;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-dim-bone);
-  }
-
-  .u-hairline-t {
-    border-top: 1px solid var(--hairline);
-  }
-  .u-hairline-b {
-    border-bottom: 1px solid var(--hairline);
-  }
-  .u-hairline-l {
-    border-left: 1px solid var(--hairline);
-  }
-
-  /* The observatory graticule: fixed, static, extremely low contrast.
-     No parallax, no mouse tracking — an instrument face, not a background. */
-  .u-graticule {
-    background-image:
-      linear-gradient(to right, var(--hairline-faint) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--hairline-faint) 1px, transparent 1px);
-    background-size: 6rem 6rem;
-  }
-
-  /* Seats the persistent world behind type at any scroll position, so copy
-     never lands on a bright cluster of nodes. */
-  .u-world-vignette {
-    background:
-      radial-gradient(75% 55% at 50% 50%, transparent 0%, rgba(7, 8, 8, 0.72) 100%),
-      linear-gradient(
-        to bottom,
-        rgba(7, 8, 8, 0.55) 0%,
-        transparent 22%,
-        transparent 78%,
-        rgba(7, 8, 8, 0.72) 100%
-      );
-  }
-
-  /* Panels that sit over the world and must stay readable. */
-  .u-panel {
-    background: color-mix(in srgb, var(--color-void) 82%, transparent);
-    backdrop-filter: blur(6px);
-  }
-
-  .u-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
-
-  /* Editorial display scale — fluid, monumental, tight. */
-  .u-display-1 {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(2.75rem, 8.2vw, 8.5rem);
-    line-height: 0.92;
-    letter-spacing: -0.02em;
-  }
-
-  .u-display-2 {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(2rem, 5.4vw, 4.75rem);
-    line-height: 1;
-    letter-spacing: -0.015em;
-  }
-
-  .u-display-3 {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(1.6rem, 3.4vw, 2.75rem);
-    line-height: 1.08;
-    letter-spacing: -0.01em;
-  }
-
-  .u-lede {
-    font-size: clamp(1rem, 1.55vw, 1.1875rem);
-    line-height: 1.62;
-    color: var(--color-muted-bone);
-  }
-
-  .u-body {
-    font-size: 0.9375rem;
-    line-height: 1.72;
-    color: var(--color-muted-bone);
-  }
-
-  /* Wide diagrams scroll inside their own frame. The page body never scrolls
-     horizontally. */
-  .u-figure-scroll {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    max-width: 100%;
-    min-width: 0;
-  }
+body {
+  background-color: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
-/* ============================================================================
-   MOTION
-   ----------------------------------------------------------------------------
-   Motion here is semantic: elements arrive in causal order, and a path activates
-   in the direction its mechanism runs. Nothing arrives before it can be read.
-   ========================================================================== */
-
-@layer utilities {
-  @keyframes world-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .u-rise {
-    opacity: 0;
-    animation: rise 900ms var(--ease-instrument) forwards;
-    animation-delay: var(--delay, 0ms);
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .u-causal-in {
-    opacity: 0;
-    animation: causal-in 620ms var(--ease-instrument) forwards;
-    animation-delay: var(--delay, 0ms);
-  }
-
-  @keyframes causal-in {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Stability: a slow, regular pulse. Rupture never uses this. */
-  .u-recurrent {
-    animation: recurrent 7s ease-in-out infinite;
-  }
-
-  @keyframes recurrent {
-    0%,
-    100% {
-      opacity: 0.55;
-    }
-    50% {
-      opacity: 1;
-    }
-  }
+::selection {
+  background: var(--color-brass);
+  color: var(--color-void);
 }
 
-/* ============================================================================
-   REDUCED MOTION (§31)
-   ----------------------------------------------------------------------------
-   Nothing on this site depends on animation to be understood. Under reduce,
-   every sequence resolves immediately to its final, complete state — and because
-   each animation fills forwards, diagrams land finished rather than disappearing.
-   ========================================================================== */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
 
+/* Reduced motion is honoured by every animation in the stylesheet, and
+   independently by the WebGL scene and the scroll driver (§40). */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
 }
 
-/* The argument should survive being printed. */
+/* -------------------------------------------------------- typographic ---- */
+
+.display {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  line-height: 1.1;
+  letter-spacing: -0.016em;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+.standfirst {
+  font-family: var(--font-display);
+  font-size: var(--text-standfirst);
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-bone) 82%, transparent);
+  text-wrap: pretty;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brass);
+}
+
+.label-dim {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.prose-argument p {
+  font-family: var(--font-display);
+  font-size: 1.075rem;
+  line-height: 1.72;
+  color: color-mix(in srgb, var(--color-bone) 88%, transparent);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.prose-argument p + p {
+  margin-top: 1.15rem;
+}
+
+/* ------------------------------------------------------------- surface ---- */
+
+.rule {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-graphite) 100%, transparent),
+    transparent
+  );
+}
+
+.panel {
+  border: 1px solid var(--color-graphite);
+  background: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+/* The exhibition's fine grid. Drawn in CSS so it survives WebGL failure. */
+.grid-field {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-graphite) 42%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-graphite) 42%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 84px 84px;
+}
+
+/* -------------------------------------------------------------- reveal ---- */
+
+/* Content is visible by default and only hidden where a script exists to
+   reveal it. Without JavaScript — or in a browser that never fires the
+   observer — the argument is simply present, which is the behaviour §41 and
+   §45 both require. */
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+
+@media (scripting: enabled) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 900ms var(--ease-instrument),
+      transform 900ms var(--ease-instrument);
+  }
+
+  .reveal[data-in-view="true"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-in-view="false"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* -------------------------------------------------------------- motion ---- */
+
+@keyframes yk-drift {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -240;
+  }
+}
+
+@keyframes yk-breathe {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.animate-drift {
+  animation: yk-drift 9s linear infinite;
+}
+
+.animate-breathe {
+  animation: yk-breathe 6s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------- print ---- */
+
 @media print {
   body {
     background: #fff;
     color: #000;
   }
-  .u-no-print {
+  canvas,
+  [data-print-hidden="true"] {
     display: none !important;
   }
 }

@@ -2,9 +2,9 @@
   "name": "yukthi-lab",
   "version": "1.0.0",
   "private": true,
-  "description": "Yukthi Lab — a Scoped Causal Hypergraph-based World Model. Bring certainty to an increasingly unstable world.",
+  "description": "Yukthi Lab — an immersive civilizational thesis. A Scoped Causal Hypergraph-based World Model.",
   "engines": {
-    "node": "22.x"
+    "node": ">=20.9 <23"
   },
   "scripts": {
     "dev": "next dev",
@@ -17,7 +17,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -25,11 +25,10 @@
     "@react-three/fiber": "^9.3.0",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
-    "gsap": "^3.15.0",
-    "motion": "^12.23.12",
-    "next": "16.3.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "gsap": "^3.13.0",
+    "next": "16.3.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "three": "^0.180.0",
     "zod": "^4.1.5"
   },
@@ -40,16 +39,16 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.6",
+    "@testing-library/user-event": "^14.6.1",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.1.7",
-    "@types/node": "^24.5.2",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^5.0.2",
     "eslint": "^9.35.0",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.3",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",

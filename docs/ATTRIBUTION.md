@@ -1,79 +1,82 @@
-# Attribution and licences
+# Attribution
 
-## Third-party code
+## What is original here
 
-No third-party source was copied into this repository. Every file here was
-written for this project.
+Every line of application code, all copy, the causal graphs, the form geometry,
+the shaders and the visual identity in this repository were written for Yukthi
+Lab.
 
-Where public work informed the engineering, it informed the _technique_ and was
-reimplemented inside this codebase's own architecture:
+No external website's visual identity, layout, assets, imagery or source code
+was copied. The brief named reference experiences for their _level of immersion
+and experimental quality_; those were treated as a standard to meet, not a design
+to reproduce.
 
-| Source                                                   | What was learned                                                                                                                                                                                                                                                                                                 | What was used                                                           |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| GSAP's official ScrollTrigger documentation and examples | Correct trigger lifecycle: registering the plugin once, scoping with `useGSAP`, attaching triggers to a top-level timeline, `scrub` for continuous animation versus `toggleActions` for discrete, animating children rather than the pinned wrapper, killing triggers on unmount, refreshing after layout change | Patterns only. No code copied. See `lib/story/use-chapter-progress.ts`. |
-| `pmndrs/react-three-fiber` examples                      | On-demand frameloop, DPR capping, buffer reuse, disposing geometry, reading imperative state without re-rendering                                                                                                                                                                                                | Patterns only. No code copied.                                          |
-| Codrops scroll-animation experiments                     | Scroll-linked reveal pacing and the general shape of pinned storytelling                                                                                                                                                                                                                                         | Approach only. No code or assets used.                                  |
+## Runtime dependencies
 
-No visual asset, image, font file, model or texture from any reference site or
-repository is present in this project.
+| Package                                                                      | Licence                      | Used for                                       |
+| ---------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------- |
+| [Next.js](https://nextjs.org)                                                | MIT                          | Framework, routing, image and OG generation    |
+| [React](https://react.dev)                                                   | MIT                          | UI                                             |
+| [three.js](https://threejs.org)                                              | MIT                          | WebGL                                          |
+| [@react-three/fiber](https://github.com/pmndrs/react-three-fiber)            | MIT                          | React renderer for three.js                    |
+| [@react-three/drei](https://github.com/pmndrs/drei)                          | MIT                          | Adaptive DPR and events helpers                |
+| [GSAP](https://gsap.com) + ScrollTrigger                                     | Standard "No Charge" licence | Scroll position and progress                   |
+| [@gsap/react](https://github.com/greensock/react)                            | MIT                          | `useGSAP` lifecycle                            |
+| [d3-shape](https://d3js.org/d3-shape), [d3-scale](https://d3js.org/d3-scale) | ISC                          | Line generation and scales for the break chart |
+| [Zod](https://zod.dev)                                                       | MIT                          | Contact submission validation                  |
+| [Tailwind CSS](https://tailwindcss.com)                                      | MIT                          | Design tokens and utilities                    |
 
-## Dependencies
+### A note on the GSAP licence
 
-All runtime dependencies are permissively licensed (MIT, ISC or Apache-2.0).
+GSAP's core and ScrollTrigger are used here under GreenSock's **Standard "No
+Charge" licence**, which covers use in a site like this one. It does _not_ cover
+products where the end user is charged for access to GSAP-powered features; that
+requires a commercial licence. If Yukthi Lab's use ever changes shape, review
+<https://gsap.com/licensing/> before shipping.
 
-| Package                      | Licence                      | Why it is here                    |
-| ---------------------------- | ---------------------------- | --------------------------------- |
-| `next`, `react`, `react-dom` | MIT                          | Framework                         |
-| `three`                      | MIT                          | WebGL                             |
-| `@react-three/fiber`         | MIT                          | React renderer for three.js       |
-| `@react-three/drei`          | MIT                          | R3F helpers                       |
-| `gsap`, `@gsap/react`        | Standard "No Charge" licence | Scroll orchestration              |
-| `motion`                     | MIT                          | Small DOM interactions            |
-| `d3-scale`, `d3-shape`       | ISC                          | Scale and path utilities          |
-| `zod`                        | MIT                          | Schema validation at module scope |
-| `tailwindcss`                | MIT                          | Styling                           |
+Everything else above is permissively licensed (MIT or ISC) and redistributable
+with attribution.
 
-Run `npm ls --omit=dev` for the resolved tree, and `npm audit` before release.
+## Development dependencies
 
-**A note on GSAP.** GSAP is distributed under Club GreenSock's standard "No
-Charge" licence, which permits use in most non-commercial and commercial contexts
-but is **not** an OSI-approved open-source licence. Read the current terms at
-<https://gsap.com/licensing/> and confirm they cover your intended use before
-deploying commercially. This is the one dependency here whose licence deserves a
-deliberate decision rather than an assumption.
+TypeScript, ESLint (with `eslint-config-next`), Prettier, Vitest, Testing
+Library, Playwright and `@axe-core/playwright` — all MIT, none shipped to the
+browser.
 
-## Typefaces
+## Fonts
 
-- **Cormorant Garamond** — SIL Open Font License 1.1
-- **IBM Plex Sans** and **IBM Plex Mono** — SIL Open Font License 1.1
+None are loaded. Typography uses system stacks: an old-style serif for argument,
+the platform sans for interface, the platform monospace for coordinates and
+mechanism ladders.
 
-Both are loaded through `next/font/google`, which fetches them at build time and
-serves them from this site's own origin. No request reaches a font provider at
-runtime, so no third party learns that a visitor loaded a page.
+This is a deliberate choice rather than an omission. It keeps `font-src` in the
+Content-Security-Policy as narrow as it looks, removes a render-blocking network
+dependency from a page whose first job is to be readable, and avoids shipping a
+webfont licence question along with the repository.
 
-## Evidence and quoted sources
+## Techniques
 
-Every evidence record cites a real, publicly retrievable document published by
-the named organisation. Those documents remain the property of their publishers.
+The scroll-driven and WebGL techniques were built from official documentation and
+first principles:
 
-This project:
+- three.js manual and examples — <https://threejs.org/docs/>
+- React Three Fiber documentation — <https://r3f.docs.pmnd.rs/>
+- GSAP ScrollTrigger documentation — <https://gsap.com/docs/v3/Plugins/ScrollTrigger/>
+- MDN, for the WebGL, Intersection Observer, `prefers-reduced-motion` and
+  `scripting` media feature behaviour used throughout
 
-- links to sources rather than reproducing them;
-- quotes claims with the source's own units, scenario conditions and hedges
-  intact;
-- records what each figure does _not_ say alongside what it does;
-- marks any record not yet checked against its primary document as unverified,
-  wherever that record appears.
+Public repositories under
+[github.com/topics/scrolling-animation](https://github.com/topics/scrolling-animation)
+were reviewed as technical reference only. Nothing was copied from any of them:
+no code, no assets, no visual identity. Where a general technique is widely
+documented — morphing a point cloud between target buffers, damped camera
+interpolation, crossfading edge topology — it was reimplemented inside this
+architecture.
 
-Characterisations of a source's findings are this project's own. Any error in one
-is this project's, not the publisher's, and corrections are welcome through the
-contact page.
+## Evidence
 
-## The site's own content
-
-The written argument, the causal graphs, the decision scopes and the illustrative
-scenarios were authored for this project.
-
-The scenarios are explicitly labelled **illustrative**: they demonstrate the
-shape of a causal analysis and are not findings about any organisation, market or
-asset. Nothing on the site is output from a running Yukthi system.
+Every source cited on the site belongs to the organisation that published it and
+is credited by name, title and date in `content/evidence.ts` and on `/evidence`.
+Nothing is reproduced beyond a short factual summary of what each document
+reports, and Yukthi's reading of a source is always labelled as such and kept in
+a separate field from the source's own claim.

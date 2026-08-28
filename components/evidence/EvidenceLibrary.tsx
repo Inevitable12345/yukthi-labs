@@ -1,147 +1,70 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-import { evidenceRecords } from "@/data/evidence";
-import {
-  EVIDENCE_CATEGORY_LABEL,
-  type EvidenceCategory,
-  type EvidenceRecord,
-} from "@/data/schema";
-import { InstrumentLabel } from "@/components/ui/InstrumentLabel";
+import { EVIDENCE } from "@/content/evidence";
 import { cn } from "@/lib/utils/cn";
+import { EvidenceRecord } from "./EvidenceRecord";
 
-import { SourceDrawer } from "./SourceDrawer";
-
-/* ============================================================================
-   THE SOURCE LIBRARY (§35)
-   ----------------------------------------------------------------------------
-   Every source behind every claim, grouped the way the argument uses them.
-   Filtering is client-side over a small fixed list — no search index, no
-   network, and the full list is in the DOM before any script runs.
-   ========================================================================== */
-
-const CATEGORY_ORDER: EvidenceCategory[] = [
-  "fragmentation",
-  "critical-minerals",
-  "semiconductors",
-  "structural-breaks",
-  "energy",
-  "insurance",
-  "ai-forecasting",
-];
-
-export function EvidenceLibrary() {
-  const [filter, setFilter] = useState<EvidenceCategory | "all">("all");
-  const [open, setOpen] = useState<EvidenceRecord | null>(null);
-
-  const groups = useMemo(
-    () =>
-      CATEGORY_ORDER.map((category) => ({
-        category,
-        records: evidenceRecords.filter(
-          (record) =>
-            record.categories.includes(category) && (filter === "all" || filter === category),
-        ),
-      })).filter((group) => group.records.length > 0),
-    [filter],
+/**
+ * The library, filterable by publisher. Filtering is client state over a
+ * server-rendered list, so every record is in the initial HTML and the filter
+ * only hides — which keeps the whole library crawlable (§45).
+ */
+export function EvidenceLibrary({ className }: { className?: string }) {
+  const organizations = useMemo(
+    () => [...new Set(EVIDENCE.map((record) => record.organization))].sort(),
+    [],
   );
+  const [filter, setFilter] = useState<string | null>(null);
+
+  const visible = filter ? EVIDENCE.filter((record) => record.organization === filter) : EVIDENCE;
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter sources by subject">
-        <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>
-          All
-        </FilterButton>
-        {CATEGORY_ORDER.map((category) => (
-          <FilterButton
-            key={category}
-            active={filter === category}
-            onClick={() => setFilter(category)}
+    <div className={className}>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setFilter(null)}
+          aria-pressed={filter === null}
+          className={cn(
+            "border px-3 py-1.5 font-mono text-[0.66rem] tracking-[0.12em] uppercase transition-colors",
+            filter === null
+              ? "border-brass text-brass"
+              : "border-graphite text-ash hover:text-bone",
+          )}
+        >
+          All {EVIDENCE.length}
+        </button>
+        {organizations.map((organization) => (
+          <button
+            key={organization}
+            type="button"
+            onClick={() => setFilter(organization === filter ? null : organization)}
+            aria-pressed={organization === filter}
+            className={cn(
+              "border px-3 py-1.5 text-left font-mono text-[0.66rem] tracking-[0.12em] transition-colors",
+              organization === filter
+                ? "border-brass text-brass"
+                : "border-graphite text-ash hover:text-bone",
+            )}
           >
-            {EVIDENCE_CATEGORY_LABEL[category]}
-          </FilterButton>
+            {organization}
+          </button>
         ))}
       </div>
 
-      <div className="mt-16 space-y-20">
-        {groups.map((group) => (
-          <section key={group.category} aria-labelledby={`group-${group.category}`}>
-            <h2
-              id={`group-${group.category}`}
-              className="u-display-3 border-b border-[color:var(--hairline)] pb-6 text-bone"
-            >
-              {EVIDENCE_CATEGORY_LABEL[group.category]}
-            </h2>
+      <p aria-live="polite" className="mt-4 font-mono text-[0.66rem] tracking-[0.1em] text-ash">
+        Showing {visible.length} of {EVIDENCE.length} records
+        {filter ? ` from ${filter}` : ""}.
+      </p>
 
-            <ul className="mt-10 space-y-10">
-              {group.records.map((record) => (
-                <li key={`${group.category}-${record.id}`}>
-                  <article className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-8">
-                    <div>
-                      <InstrumentLabel tone="gold" className="tabular-nums">
-                        {record.id}
-                      </InstrumentLabel>
-                      {record.status === "needs-verification" ? (
-                        <p className="u-instrument mt-2 text-rupture">Unverified</p>
-                      ) : null}
-                    </div>
-
-                    <div>
-                      <h3 className="text-[1.0625rem] leading-snug text-bone">
-                        {record.title}
-                      </h3>
-                      <p className="u-instrument mt-2">
-                        {record.organization}
-                        {record.date ? ` · ${record.date}` : ""}
-                      </p>
-                      <p className="u-body mt-4 u-measure">{record.claim}</p>
-
-                      <button
-                        type="button"
-                        onClick={() => setOpen(record)}
-                        aria-haspopup="dialog"
-                        className="u-instrument mt-5 border-b border-[color:var(--hairline-strong)] pb-1 text-muted-bone transition-colors hover:border-gold hover:text-gold"
-                      >
-                        Full record
-                        <span className="u-sr-only"> for {record.title}</span>
-                      </button>
-                    </div>
-                  </article>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <ul className="mt-8 space-y-6">
+        {EVIDENCE.map((record) => (
+          <li key={record.id} hidden={filter !== null && record.organization !== filter}>
+            <EvidenceRecord evidence={record} />
+          </li>
         ))}
-      </div>
-
-      {open ? <SourceDrawer record={open} open onClose={() => setOpen(null)} /> : null}
+      </ul>
     </div>
-  );
-}
-
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "border px-3 py-2 font-mono text-[0.625rem] tracking-[0.16em] uppercase transition-colors",
-        active
-          ? "border-gold text-gold"
-          : "border-[color:var(--hairline)] text-muted-bone hover:border-bone hover:text-bone",
-      )}
-    >
-      {children}
-    </button>
   );
 }

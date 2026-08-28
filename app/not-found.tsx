@@ -1,20 +1,30 @@
+import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
-import { ActionLink } from "@/components/ui/ActionLink";
+import { NAVIGATION } from "@/lib/metadata/site";
 
 export default function NotFound() {
   return (
     <PageShell
-      eyebrow="404"
-      title="No path to this node."
-      lede={<>The page you asked for is not in the graph. These are.</>}
+      coordinate="Yukthi / Observatory / —"
+      title="No room at this coordinate"
+      standfirst="The exhibition has twenty rooms and five pages. This is not one of them."
     >
-      <nav aria-label="Suggested pages" className="flex flex-col gap-6">
-        <ActionLink href="/" tone="gold">
-          The argument
-        </ActionLink>
-        <ActionLink href="/thesis">Read the thesis</ActionLink>
-        <ActionLink href="/technology">Explore the technical bet</ActionLink>
-        <ActionLink href="/evidence">See the evidence</ActionLink>
+      <nav aria-label="Elsewhere" className="flex flex-wrap gap-x-8 gap-y-3">
+        <Link
+          href="/"
+          className="font-mono text-[0.72rem] tracking-[0.16em] uppercase text-brass underline decoration-brass-dim underline-offset-8"
+        >
+          The exhibition
+        </Link>
+        {NAVIGATION.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="font-mono text-[0.72rem] tracking-[0.16em] uppercase text-ash underline decoration-graphite underline-offset-8 transition-colors hover:text-bone"
+          >
+            {item.label}
+          </Link>
+        ))}
       </nav>
     </PageShell>
   );
